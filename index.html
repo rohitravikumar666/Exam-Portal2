@@ -106,7 +106,6 @@
     .view { display: none; }
     .active { display: block; }
 
-    /* DASHBOARD CARD & GRID STYLING */
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -140,7 +139,6 @@
       margin-bottom: 16px;
     }
 
-    /* FORM STYLING */
     .form-group { 
       margin-bottom: 18px; 
       text-align: left;
@@ -319,30 +317,26 @@
     <div id="sync-status" class="status-badge">✓ Connected to Firebase (Live Sync Active)</div>
   </div>
 
-  <!-- MAIN MENU MODE SELECTION -->
+  <!-- MAIN MENU -->
   <div id="initial-view" class="view active">
     <h2>Select Access Mode</h2>
-    
     <div class="menu-rows">
-      <!-- ROW 1: Admin Login & Guest/Faculty Login -->
       <div class="button-row">
         <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
         <button class="btn-secondary" onclick="showGuestLoginModal()">Faculty / Guest Login</button>
       </div>
-
-      <!-- ROW 2: Student Login -->
       <div class="button-row">
         <button class="btn-primary" onclick="showStudentTokenModal()">Student Login</button>
       </div>
     </div>
   </div>
 
-  <!-- STUDENT DETAILS FORM -->
+  <!-- STUDENT REGISTRATION FORM -->
   <div id="student-login-view" class="view">
     <h2>Student Registration</h2>
     <div class="student-details-card">
-      <p><strong>Assessment Title:</strong> <span id="active-exam-label" style="color:var(--primary); font-weight:bold;">-</span></p>
-      <p><strong>Faculty Evaluator:</strong> <span id="active-faculty-label" style="color:var(--text); font-weight:bold;">Dr. AARAA</span></p>
+      <p><strong>Assessment Name:</strong> <span id="active-exam-label" style="color:var(--primary); font-weight:bold;">-</span></p>
+      <p><strong>Faculty Evaluator:</strong> <span id="active-faculty-label" style="color:var(--text); font-weight:bold;">-</span></p>
       <hr style="border: none; border-top: 1px solid var(--border); margin: 12px 0;">
       
       <div class="form-group">
@@ -395,7 +389,7 @@
 
       <div class="dashboard-card">
         <h3>3) Delete Token</h3>
-        <p>Remove invalid or expired assessment tokens from the database.</p>
+        <p>Remove invalid or expired assessment tokens from database.</p>
         <button class="btn btn-danger" style="width: 100%;" onclick="adminDeleteToken()">Delete Token</button>
       </div>
     </div>
@@ -417,7 +411,7 @@
     </div>
   </div>
 
-  <!-- ADMIN: VIEW TOKENS PANEL -->
+  <!-- ADMIN VIEW TOKENS -->
   <div id="admin-view-tokens-panel" class="view">
     <h2>Active Assessment Tokens</h2>
     <div id="tokens-list-container" class="panel-box">Loading tokens...</div>
@@ -426,11 +420,10 @@
     </div>
   </div>
 
-  <!-- FACULTY / GUEST ASSESSMENT CREATOR & EDITOR -->
+  <!-- FACULTY / GUEST CREATOR & EDITOR -->
   <div id="guest-view" class="view">
     <h2>Faculty / Guest Assessment Management</h2>
     
-    <!-- EXISTING TOKEN SEARCH BAR -->
     <div class="token-load-box">
       <label for="existing-token-input" style="color: var(--primary-dark);">Modify Existing Token OR Create New:</label>
       <div style="display: flex; gap: 10px; margin-top: 8px;">
@@ -447,11 +440,12 @@
       <div class="form-row">
         <div class="form-group">
           <label>Faculty / Evaluator Name:</label>
-          <input type="text" id="guest-faculty-name" value="Dr. AARAA" placeholder="e.g. Dr. AARAA">
+          <!-- Faculty Name field now uses placeholder background text instead of hardcoded value -->
+          <input type="text" id="guest-faculty-name" placeholder="e.g. Dr. AARAA">
         </div>
         <div class="form-group">
-          <label>Assessment Title:</label>
-          <input type="text" id="guest-exam-title" placeholder="e.g. Civil Engineering Mid-Term">
+          <label>Assessment Title / Name:</label>
+          <input type="text" id="guest-exam-title" placeholder="e.g. Civil Engineering Mid-Term Assessment">
         </div>
       </div>
 
@@ -496,7 +490,7 @@
     </div>
 
     <div id="qn-container">
-      <h3 id="qn-text" style="text-align: left; color: var(--text);">Question statement loading...</h3>
+      <h3 id="qn-text" style="text-align: left; color: var(--text);">Loading Question...</h3>
       <div class="options-container" id="options-box"></div>
     </div>
 
@@ -512,7 +506,7 @@
       <h1 id="result-exam-title">Assessment Report</h1>
       <div class="student-details-card">
         <p><strong>Student Name:</strong> <span id="res-stud-name">-</span></p>
-        <p><strong>Faculty Evaluator:</strong> <span id="res-faculty-name" style="color:var(--primary); font-weight:bold;">Dr. AARAA</span></p>
+        <p><strong>Faculty Evaluator:</strong> <span id="res-faculty-name" style="color:var(--primary); font-weight:bold;">-</span></p>
         <p><strong>Department:</strong> <span id="res-stud-dept">-</span> | <strong>Semester:</strong> <span id="res-stud-sem">-</span></p>
         <p><strong>Class No:</strong> <span id="res-stud-class-num">-</span> | <strong>Roll No:</strong> <span id="res-stud-roll-num">-</span></p>
         <p><strong>Assessment Mode / Token:</strong> <span id="res-token">-</span></p>
@@ -555,7 +549,6 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // ACCESS PASSWORDS
   const ADMIN_PASSWORD = "RR@CET_Civil@2026";
   const GUEST_PASSWORD = "CET_Civil@2026";
 
@@ -566,8 +559,6 @@
   let timerInterval = null;
   let timeLeft = 15;
   let currentStudent = {};
-
-  // Track if guest is editing an existing token or creating a new one
   let activeEditingToken = null;
 
   function showView(viewId) {
@@ -575,7 +566,7 @@
     document.getElementById(viewId).classList.add('active');
   }
 
-  /* --- 1. ADMIN MODAL & CONTROLS --- */
+  /* --- ADMIN CONTROLS --- */
   function showAdminLoginModal() {
     let pass = prompt("Enter Master Admin Password:");
     if (pass === ADMIN_PASSWORD) {
@@ -599,10 +590,29 @@
       document.getElementById('student-access-lbl').innerText = studentDisabled ? "Disabled" : "Enabled";
       document.getElementById('student-access-lbl').style.color = studentDisabled ? "var(--danger)" : "var(--success)";
       document.getElementById('toggle-student-btn').innerText = studentDisabled ? "Enable Student Login" : "Disable Student Login";
-    }).catch(() => {});
+    }).catch(err => {
+      console.warn("Could not fetch systemSettings:", err);
+    });
   }
 
-  /* --- 2. ADMIN ACTIONS (1-5) --- */
+  function toggleGuestAccess() {
+    db.ref('systemSettings/guestDisabled').once('value').then(snap => {
+      let currentState = snap.val() === true;
+      db.ref('systemSettings/guestDisabled').set(!currentState).then(() => {
+        loadAdminStatus();
+      });
+    }).catch(err => alert("Database Error: " + err.message));
+  }
+
+  function toggleStudentAccess() {
+    db.ref('systemSettings/studentDisabled').once('value').then(snap => {
+      let currentState = snap.val() === true;
+      db.ref('systemSettings/studentDisabled').set(!currentState).then(() => {
+        loadAdminStatus();
+      });
+    }).catch(err => alert("Database Error: " + err.message));
+  }
+
   function adminViewTokens() {
     db.ref('assessments').once('value').then(snapshot => {
       let container = document.getElementById('tokens-list-container');
@@ -618,14 +628,16 @@
           item.innerHTML = `
             <div>
               <strong>Token: ${tokenKey}</strong> — ${data.title || 'Untitled Assessment'}
-              <br><small style="color:var(--text-muted)">Faculty: ${data.facultyName || 'Dr. AARAA'} | Questions: ${data.questions ? data.questions.length : 0}</small>
+              <br><small style="color:var(--text-muted)">Faculty: ${data.facultyName || 'N/A'} | Questions: ${data.questions ? data.questions.length : 0}</small>
             </div>
           `;
           container.appendChild(item);
         });
       }
       showView('admin-view-tokens-panel');
-    }).catch(err => alert("Error loading tokens: " + err.message));
+    }).catch(err => {
+      alert("Error loading tokens: " + err.message + "\n\nPlease ensure Firebase Realtime Database Security Rules allow read/write access (.read: true, .write: true).");
+    });
   }
 
   function adminEditTokenData() {
@@ -659,25 +671,7 @@
     }
   }
 
-  function toggleGuestAccess() {
-    db.ref('systemSettings/guestDisabled').once('value').then(snap => {
-      let currentState = snap.val() === true;
-      db.ref('systemSettings/guestDisabled').set(!currentState).then(() => {
-        loadAdminStatus();
-      });
-    });
-  }
-
-  function toggleStudentAccess() {
-    db.ref('systemSettings/studentDisabled').once('value').then(snap => {
-      let currentState = snap.val() === true;
-      db.ref('systemSettings/studentDisabled').set(!currentState).then(() => {
-        loadAdminStatus();
-      });
-    });
-  }
-
-  /* --- 3. FACULTY / GUEST LOGIN --- */
+  /* --- FACULTY / GUEST LOGIN --- */
   function showGuestLoginModal() {
     db.ref('systemSettings/guestDisabled').once('value').then(snap => {
       if (snap.val() === true) {
@@ -700,7 +694,6 @@
     });
   }
 
-  /* --- 4. FETCH EXISTING TOKEN OR RESET FOR GUEST --- */
   function loadExistingTokenData() {
     let tokenInput = document.getElementById('existing-token-input').value.trim().toUpperCase();
     if (!tokenInput) {
@@ -710,14 +703,14 @@
 
     db.ref('assessments/' + tokenInput).once('value').then(snapshot => {
       if (!snapshot.exists()) {
-        alert(`Token "${tokenInput}" was not found in the database.`);
+        alert(`Token "${tokenInput}" was not found in database.`);
         return;
       }
 
       let data = snapshot.val();
       activeEditingToken = tokenInput;
 
-      document.getElementById('guest-faculty-name').value = data.facultyName || "Dr. AARAA";
+      document.getElementById('guest-faculty-name').value = data.facultyName || "";
       document.getElementById('guest-exam-title').value = data.title || "";
       document.getElementById('guest-sec-count').value = data.sectionsCount || 1;
       document.getElementById('guest-qns-per-sec').value = data.qnsPerSection || 1;
@@ -727,7 +720,6 @@
       document.getElementById('token-mode-indicator').style.color = "var(--primary)";
       document.getElementById('save-token-btn').innerText = "Update Existing Token";
 
-      // Render question cards pre-filled
       buildGuestQuestionInputs(data.questions);
       alert(`Token ${activeEditingToken} loaded successfully! You can now edit its details.`);
     }).catch(err => alert("Error fetching token: " + err.message));
@@ -736,7 +728,7 @@
   function resetGuestForm() {
     activeEditingToken = null;
     document.getElementById('existing-token-input').value = "";
-    document.getElementById('guest-faculty-name').value = "Dr. AARAA";
+    document.getElementById('guest-faculty-name').value = "";
     document.getElementById('guest-exam-title').value = "";
     document.getElementById('guest-sec-count').value = 2;
     document.getElementById('guest-qns-per-sec').value = 2;
@@ -750,7 +742,7 @@
     buildGuestQuestionInputs();
   }
 
-  /* --- 5. STUDENT TOKEN LOGIN --- */
+  /* --- STUDENT LOGIN & TOKEN LOADING --- */
   function showStudentTokenModal() {
     db.ref('systemSettings/studentDisabled').once('value').then(snap => {
       if (snap.val() === true) {
@@ -772,8 +764,10 @@
       if (snapshot.exists()) {
         activeAssessment = snapshot.val();
         activeToken = token;
-        document.getElementById('active-exam-label').innerText = activeAssessment.title;
-        document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "Dr. AARAA";
+        
+        // Displays exact assessment name created by faculty
+        document.getElementById('active-exam-label').innerText = activeAssessment.title || "Custom Assessment";
+        document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "Faculty Evaluator";
         showView('student-login-view');
       } else {
         alert("Invalid Token Number. Please check with your faculty.");
@@ -781,7 +775,7 @@
     }).catch(err => alert("Error accessing token: " + err.message));
   }
 
-  /* --- 6. GUEST QUESTION BUILDER & TOKEN SAVE/UPDATE --- */
+  /* --- QUESTION BUILDER & SAVING --- */
   function buildGuestQuestionInputs(existingQuestions = null) {
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
     const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
@@ -832,8 +826,8 @@
   }
 
   function generateGuestAssessmentToken() {
-    const facultyName = document.getElementById('guest-faculty-name').value.trim() || "Dr. AARAA";
-    const title = document.getElementById('guest-exam-title').value.trim() || "Guest Assessment";
+    const facultyName = document.getElementById('guest-faculty-name').value.trim() || "Faculty Evaluator";
+    const title = document.getElementById('guest-exam-title').value.trim() || "Online Assessment";
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
     const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
     const driveUrl = document.getElementById('guest-drive-url').value.trim();
@@ -863,7 +857,6 @@
       });
     });
 
-    // Reuse active editing token if modifying, otherwise generate a new CETxxxx token
     const token = activeEditingToken ? activeEditingToken : ("CET" + Math.floor(1000 + Math.random() * 9000));
 
     const payload = {
@@ -891,7 +884,7 @@
       .catch(err => alert("Error saving assessment: " + err.message));
   }
 
-  /* --- 7. EXAM EXECUTION & RESULTS --- */
+  /* --- EXAM EXECUTION & RESULTS --- */
   function validateAndStartExam() {
     let name = document.getElementById('stud-name').value.trim();
     let dept = document.getElementById('stud-dept').value.trim();
@@ -986,7 +979,7 @@
 
     document.getElementById('result-exam-title').innerText = activeAssessment.title || "Assessment Result";
     document.getElementById('res-stud-name').innerText = currentStudent.name;
-    document.getElementById('res-faculty-name').innerText = activeAssessment.facultyName || "Dr. AARAA";
+    document.getElementById('res-faculty-name').innerText = activeAssessment.facultyName || "Faculty Evaluator";
     document.getElementById('res-stud-dept').innerText = currentStudent.dept;
     document.getElementById('res-stud-sem').innerText = currentStudent.sem;
     document.getElementById('res-stud-class-num').innerText = currentStudent.classNum;
