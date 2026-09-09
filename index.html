@@ -198,8 +198,8 @@
       <!-- 1. Admin Driven Main Student Login -->
       <button onclick="startAdminDrivenStudentLogin()">Student Login</button>
       
-      <!-- 2. Guest Login -->
-      <button class="btn-secondary" onclick="showGuestLoginModal()">Guest Login</button>
+      <!-- 2. Faculty / Guest Login -->
+      <button class="btn-secondary" onclick="showGuestLoginModal()">Faculty / Guest Login</button>
       
       <!-- 3. Admin Login -->
       <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
@@ -247,14 +247,14 @@
     </div>
   </div>
 
-  <!-- ADMIN: FACULTY CONTROL PANEL (MAIN DASHBOARD) -->
+  <!-- ADMIN CONTROL PANEL (MAIN DASHBOARD) -->
   <div id="admin-dashboard-view" class="view">
-    <h2>Faculty Control Panel</h2>
+    <h2>Admin Control Panel</h2>
     
     <div style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 25px auto;">
       <button class="btn-primary" style="padding: 15px; font-size: 16px;" onclick="showAdminModifyQuestions()">1) Add / Modify Questions</button>
       <button class="btn-primary" style="padding: 15px; font-size: 16px;" onclick="showAdminSettingsView()">2) Admin Settings</button>
-      <button class="btn-secondary" style="padding: 12px;" onclick="showView('initial-view')">Exit Faculty Portal</button>
+      <button class="btn-secondary" style="padding: 12px;" onclick="showView('initial-view')">Exit Admin Portal</button>
     </div>
 
     <div class="admin-card" style="margin-top: 30px; background: #e8f0fe; border-color: #b6d4fe;">
@@ -364,9 +364,9 @@
     </div>
   </div>
 
-  <!-- GUEST CREATOR VIEW -->
+  <!-- GUEST / FACULTY CREATOR VIEW -->
   <div id="guest-view" class="view">
-    <h2>Guest Assessment Builder</h2>
+    <h2>Faculty / Guest Assessment Builder</h2>
     
     <div class="form-group">
       <label>Guest / Faculty Name:</label>
@@ -403,7 +403,7 @@
 
     <div style="text-align: center; margin-top:20px;">
       <button class="btn-success" onclick="generateGuestAssessmentToken()">Generate Token & Save</button>
-      <button class="btn-secondary" onclick="showView('initial-view')">Exit Guest Portal</button>
+      <button class="btn-secondary" onclick="showView('initial-view')">Exit Faculty/Guest Portal</button>
     </div>
   </div>
 
@@ -503,10 +503,9 @@
         return;
       }
 
-      // Fetch questions and settings
-      db.ref('masterAdminData').once('value').then(dataSnap => {
-        const adminData = dataSnap.val();
-        if (!adminData || !adminData.questions || adminData.questions.length === 0) {
+      db.ref('masterAdminData/questions').once('value').then(dataSnap => {
+        const questions = dataSnap.val();
+        if (!questions || questions.length === 0) {
           alert("No questions configured in the Admin Portal yet.");
           return;
         }
@@ -519,7 +518,7 @@
           timePerQn: parseInt(config.timePerQn) || 10,
           marksPerQn: parseInt(config.marksPerQn) || 1,
           driveUrl: config.driveUrl || "",
-          questions: adminData.questions
+          questions: questions
         };
 
         activeToken = "Admin Managed Exam";
@@ -600,7 +599,7 @@
     db.ref('masterAdminConfig').update(payload).then(() => {
       alert("Admin Settings saved successfully!");
       showView('admin-dashboard-view');
-    });
+    }).catch(err => alert("Error saving settings: " + err.message));
   }
 
   /* --- 3. ADD / MODIFY QUESTIONS LOGIC --- */
@@ -614,9 +613,10 @@
       let totalQns = secCount * qnsPerSec;
 
       db.ref('masterAdminData/questions').once('value').then(dataSnap => {
-        adminQuestionsList = dataSnap.val() || [];
+        let loadedData = dataSnap.val();
+        adminQuestionsList = Array.isArray(loadedData) ? loadedData : [];
 
-        // Ensure array length matches total questions required
+        // Build base placeholder array if empty or shorter than target section size
         if (adminQuestionsList.length < totalQns) {
           for (let i = adminQuestionsList.length; i < totalQns; i++) {
             let sNum = Math.floor(i / qnsPerSec) + 1;
@@ -649,13 +649,13 @@
 
   function loadSelectedAdminQuestion() {
     let idx = parseInt(document.getElementById('admin-qn-select').value) || 0;
-    let q = adminQuestionsList[idx];
+    let q = adminQuestionsList[idx] || {};
 
     document.getElementById('admin-qn-text-input').value = q.text || '';
-    document.getElementById('admin-opt-a').value = q.options ? q.options[0] : '';
-    document.getElementById('admin-opt-b').value = q.options ? q.options[1] : '';
-    document.getElementById('admin-opt-c').value = q.options ? q.options[2] : '';
-    document.getElementById('admin-opt-d').value = q.options ? q.options[3] : '';
+    document.getElementById('admin-opt-a').value = (q.options && q.options[0]) ? q.options[0] : '';
+    document.getElementById('admin-opt-b').value = (q.options && q.options[1]) ? q.options[1] : '';
+    document.getElementById('admin-opt-c').value = (q.options && q.options[2]) ? q.options[2] : '';
+    document.getElementById('admin-opt-d').value = (q.options && q.options[3]) ? q.options[3] : '';
     document.getElementById('admin-correct-opt').value = q.correct !== undefined ? q.correct : 0;
   }
 
@@ -674,17 +674,17 @@
 
     db.ref('masterAdminData/questions').set(adminQuestionsList).then(() => {
       alert(`Question Q${idx+1} updated and synced live!`);
-    });
+    }).catch(err => alert("Error saving question: " + err.message));
   }
 
   /* --- 4. GUEST & TOKEN MODAL LOGIC --- */
   function showGuestLoginModal() {
-    let pass = prompt("Enter Guest Access Password:");
+    let pass = prompt("Enter Faculty / Guest Access Password:");
     if (pass === GUEST_PASSWORD) {
       buildGuestQuestionInputs();
       showView('guest-view');
     } else if (pass !== null) {
-      alert("Incorrect Guest Password!");
+      alert("Incorrect Access Password!");
     }
   }
 
