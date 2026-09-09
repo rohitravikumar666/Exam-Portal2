@@ -291,12 +291,30 @@
       margin-bottom: 20px;
     }
 
+    /* UNCROWDED TOKEN LOAD CONTAINER */
     .token-load-box {
       background: var(--accent);
       border: 1px dashed var(--primary);
-      padding: 16px;
+      padding: 16px 20px;
       border-radius: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+    }
+
+    .token-input-flex {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .token-input-flex input {
+      flex: 1;
+    }
+
+    .token-input-flex button {
+      padding: 11px 18px;
+      white-space: nowrap;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -331,7 +349,7 @@
     <h2>Student Registration</h2>
     <div class="student-details-card">
       <p><strong>Assessment Title:</strong> <span id="active-exam-label" style="color:var(--primary); font-weight:bold;">-</span></p>
-      <p><strong>Faculty Evaluator:</strong> <span id="active-faculty-label" style="color:var(--text); font-weight:bold;">Dr. AARAA</span></p>
+      <p><strong>Faculty Evaluator:</strong> <span id="active-faculty-label" style="color:var(--text); font-weight:bold;">-</span></p>
       <hr style="border: none; border-top: 1px solid var(--border); margin: 12px 0;">
       
       <div class="form-group">
@@ -378,7 +396,7 @@
 
       <div class="dashboard-card">
         <h3>2) Modify Token Data</h3>
-        <p>Modify questions, section setup, title, or links for an existing token.</p>
+        <p>Search, fetch, and modify existing token data and configuration.</p>
         <button class="btn btn-primary" style="width: 100%;" onclick="adminModifyTokenData()">Modify Token Data</button>
       </div>
 
@@ -396,17 +414,17 @@
 
   <!-- FACULTY / GUEST ASSESSMENT CREATOR & EDITOR -->
   <div id="guest-view" class="view">
-    <h2>Faculty / Assessment Management</h2>
+    <h2 id="assessment-editor-title">Faculty / Assessment Management</h2>
     
-    <!-- EXISTING TOKEN SEARCH BAR -->
-    <div class="token-load-box">
-      <label for="existing-token-input" style="color: var(--primary-dark);">Modify Existing Token OR Create New:</label>
-      <div style="display: flex; gap: 10px; margin-top: 8px;">
-        <input type="text" id="existing-token-input" placeholder="Enter Token (e.g., CET1234) to edit existing data">
-        <button class="btn btn-primary" style="flex: 0 0 140px;" onclick="loadExistingTokenData()">Fetch Token</button>
-        <button class="btn btn-secondary" style="flex: 0 0 100px;" onclick="resetGuestForm()">Clear / New</button>
+    <!-- SEARCH & MODIFY TOKEN CONTAINER (ADMIN ONLY) -->
+    <div class="token-load-box" id="admin-token-search-box" style="display:none;">
+      <label for="existing-token-input" style="color: var(--primary-dark); font-weight: 700;">Search & Load Existing Token Data:</label>
+      <div class="token-input-flex">
+        <input type="text" id="existing-token-input" placeholder="Enter Token (e.g., CET1234)">
+        <button class="btn btn-primary" onclick="loadExistingTokenData()">Fetch Token</button>
+        <button class="btn btn-secondary" onclick="resetGuestForm()">Clear / New</button>
       </div>
-      <div id="token-mode-indicator" style="font-size: 0.85rem; margin-top: 8px; font-weight: bold; color: var(--success);">
+      <div id="token-mode-indicator" style="font-size: 0.85rem; margin-top: 10px; font-weight: bold; color: var(--success);">
         Mode: Creating New Assessment Token
       </div>
     </div>
@@ -415,7 +433,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Faculty / Evaluator Name:</label>
-          <input type="text" id="guest-faculty-name" value="Dr. AARAA" placeholder="e.g. Dr. AARAA">
+          <input type="text" id="guest-faculty-name" placeholder="Dr. AARAA">
         </div>
         <div class="form-group">
           <label>Assessment Title:</label>
@@ -434,6 +452,18 @@
         </div>
       </div>
 
+      <!-- MARKS PER QUESTION & TIME PER QUESTION FIELDS -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Time per Question (Seconds):</label>
+          <input type="number" id="guest-time-per-qn" value="15" min="5" max="300" placeholder="15">
+        </div>
+        <div class="form-group">
+          <label>Marks per Question:</label>
+          <input type="number" id="guest-marks-per-qn" value="1" min="1" max="100" placeholder="1">
+        </div>
+      </div>
+
       <div class="form-group">
         <label>Google Drive Destination Link (For Screenshots):</label>
         <input type="text" id="guest-drive-url" placeholder="https://drive.google.com/...">
@@ -449,7 +479,7 @@
 
     <div style="text-align: center; display: flex; gap: 12px; justify-content: center; margin-top:20px;">
       <button class="btn btn-success" style="padding: 12px 24px;" id="save-token-btn" onclick="generateGuestAssessmentToken()">Generate & Save Token</button>
-      <button class="btn btn-secondary" style="padding: 12px 24px;" onclick="showView('initial-view')">Exit Portal</button>
+      <button class="btn btn-secondary" style="padding: 12px 24px;" onclick="exitEditorView()">Exit Panel</button>
     </div>
   </div>
 
@@ -480,7 +510,7 @@
       <h1 id="result-exam-title">Assessment Report</h1>
       <div class="student-details-card">
         <p><strong>Student Name:</strong> <span id="res-stud-name">-</span></p>
-        <p><strong>Faculty Evaluator:</strong> <span id="res-faculty-name" style="color:var(--primary); font-weight:bold;">Dr. AARAA</span></p>
+        <p><strong>Faculty Evaluator:</strong> <span id="res-faculty-name" style="color:var(--primary); font-weight:bold;">-</span></p>
         <p><strong>Department:</strong> <span id="res-stud-dept">-</span> | <strong>Semester:</strong> <span id="res-stud-sem">-</span></p>
         <p><strong>Class No:</strong> <span id="res-stud-class-num">-</span> | <strong>Roll No:</strong> <span id="res-stud-roll-num">-</span></p>
         <p><strong>Assessment Mode / Token:</strong> <span id="res-token">-</span></p>
@@ -493,7 +523,7 @@
           <tr>
             <th>Section Name</th>
             <th>Score Obtained</th>
-            <th>Maximum Score</th>
+            <th>Maximum Marks</th>
           </tr>
         </thead>
         <tbody id="result-table-body"></tbody>
@@ -535,7 +565,8 @@
   let timeLeft = 15;
   let currentStudent = {};
 
-  // Track if guest/admin is editing an existing token or creating a new one
+  // Track state
+  let isAdminUser = false;
   let activeEditingToken = null;
 
   function showView(viewId) {
@@ -543,10 +574,19 @@
     document.getElementById(viewId).classList.add('active');
   }
 
+  function exitEditorView() {
+    if (isAdminUser) {
+      showView('admin-dashboard-view');
+    } else {
+      showView('initial-view');
+    }
+  }
+
   /* --- 1. ADMIN LOGIN --- */
   function showAdminLoginModal() {
     let pass = prompt("Enter Master Admin Password:");
     if (pass === ADMIN_PASSWORD) {
+      isAdminUser = true;
       showView('admin-dashboard-view');
     } else if (pass !== null) {
       alert("Incorrect Password!");
@@ -556,17 +596,22 @@
   /* --- 2. ADMIN PANEL ACTIONS --- */
   function adminCreateNewToken() {
     resetGuestForm();
+    document.getElementById('admin-token-search-box').style.display = 'block';
+    document.getElementById('assessment-editor-title').innerText = "Admin Assessment Builder";
     showView('guest-view');
   }
 
   function adminModifyTokenData() {
-    let token = prompt("Enter the Token Number to Modify:");
-    if (!token) return;
-    token = token.trim().toUpperCase();
-
-    document.getElementById('existing-token-input').value = token;
+    resetGuestForm();
+    document.getElementById('admin-token-search-box').style.display = 'block';
+    document.getElementById('assessment-editor-title').innerText = "Modify Token Assessment Data";
     showView('guest-view');
-    loadExistingTokenData();
+    
+    let token = prompt("Enter the Token Number to Fetch & Modify:");
+    if (token) {
+      document.getElementById('existing-token-input').value = token.trim().toUpperCase();
+      loadExistingTokenData();
+    }
   }
 
   function adminDeleteToken() {
@@ -585,7 +630,10 @@
   function showGuestLoginModal() {
     let pass = prompt("Enter Faculty / Guest Access Password:");
     if (pass === GUEST_PASSWORD) {
+      isAdminUser = false;
       resetGuestForm();
+      document.getElementById('admin-token-search-box').style.display = 'none';
+      document.getElementById('assessment-editor-title').innerText = "Faculty / Guest Assessment Management";
       showView('guest-view');
     } else if (pass !== null) {
       alert("Incorrect Access Password!");
@@ -609,29 +657,32 @@
       let data = snapshot.val();
       activeEditingToken = tokenInput;
 
-      document.getElementById('guest-faculty-name').value = data.facultyName || "Dr. AARAA";
+      document.getElementById('guest-faculty-name').value = data.facultyName || "";
       document.getElementById('guest-exam-title').value = data.title || "";
       document.getElementById('guest-sec-count').value = data.sectionsCount || 1;
       document.getElementById('guest-qns-per-sec').value = data.qnsPerSection || 1;
+      document.getElementById('guest-time-per-qn').value = data.timePerQn || 15;
+      document.getElementById('guest-marks-per-qn').value = data.marksPerQn || 1;
       document.getElementById('guest-drive-url').value = data.driveUrl || "";
 
       document.getElementById('token-mode-indicator').innerText = `Mode: Editing Existing Token (${activeEditingToken})`;
       document.getElementById('token-mode-indicator').style.color = "var(--primary)";
       document.getElementById('save-token-btn').innerText = "Update Existing Token";
 
-      // Render question cards pre-filled
       buildGuestQuestionInputs(data.questions);
-      alert(`Token ${activeEditingToken} loaded successfully! You can now edit its details.`);
+      alert(`Token ${activeEditingToken} loaded successfully! You can now modify its details.`);
     }).catch(err => alert("Error fetching token: " + err.message));
   }
 
   function resetGuestForm() {
     activeEditingToken = null;
     document.getElementById('existing-token-input').value = "";
-    document.getElementById('guest-faculty-name').value = "Dr. AARAA";
+    document.getElementById('guest-faculty-name').value = "";
     document.getElementById('guest-exam-title').value = "";
     document.getElementById('guest-sec-count').value = 2;
     document.getElementById('guest-qns-per-sec').value = 2;
+    document.getElementById('guest-time-per-qn').value = 15;
+    document.getElementById('guest-marks-per-qn').value = 1;
     document.getElementById('guest-drive-url').value = "";
 
     document.getElementById('token-mode-indicator').innerText = "Mode: Creating New Assessment Token";
@@ -653,7 +704,7 @@
         activeAssessment = snapshot.val();
         activeToken = token;
         document.getElementById('active-exam-label').innerText = activeAssessment.title;
-        document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "Dr. AARAA";
+        document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "Faculty Evaluator";
         showView('student-login-view');
       } else {
         alert("Invalid Token Number. Please check with your faculty.");
@@ -712,10 +763,12 @@
   }
 
   function generateGuestAssessmentToken() {
-    const facultyName = document.getElementById('guest-faculty-name').value.trim() || "Dr. AARAA";
+    const facultyName = document.getElementById('guest-faculty-name').value.trim() || "Faculty Evaluator";
     const title = document.getElementById('guest-exam-title').value.trim() || "Guest Assessment";
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
     const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
+    const timePerQn = parseInt(document.getElementById('guest-time-per-qn').value) || 15;
+    const marksPerQn = parseInt(document.getElementById('guest-marks-per-qn').value) || 1;
     const driveUrl = document.getElementById('guest-drive-url').value.trim();
 
     if (!driveUrl) {
@@ -743,7 +796,6 @@
       });
     });
 
-    // Reuse active editing token if modifying, otherwise generate a new CETxxxx token
     const token = activeEditingToken ? activeEditingToken : ("CET" + Math.floor(1000 + Math.random() * 9000));
 
     const payload = {
@@ -751,10 +803,10 @@
       title: title,
       sectionsCount: secCount,
       qnsPerSection: qnsPerSec,
+      timePerQn: timePerQn,
+      marksPerQn: marksPerQn,
       driveUrl: driveUrl,
-      questions: compiledQuestions,
-      timePerQn: 15,
-      marksPerQn: 1
+      questions: compiledQuestions
     };
 
     db.ref('assessments/' + token).set(payload)
@@ -864,9 +916,11 @@
     clearInterval(timerInterval);
     showView('result-view');
 
+    const marksPerQn = activeAssessment.marksPerQn || 1;
+
     document.getElementById('result-exam-title').innerText = activeAssessment.title || "Assessment Result";
     document.getElementById('res-stud-name').innerText = currentStudent.name;
-    document.getElementById('res-faculty-name').innerText = activeAssessment.facultyName || "Dr. AARAA";
+    document.getElementById('res-faculty-name').innerText = activeAssessment.facultyName || "Faculty Evaluator";
     document.getElementById('res-stud-dept').innerText = currentStudent.dept;
     document.getElementById('res-stud-sem').innerText = currentStudent.sem;
     document.getElementById('res-stud-class-num').innerText = currentStudent.classNum;
@@ -881,19 +935,20 @@
     activeAssessment.questions.forEach((q, idx) => {
       let secIndex = Math.floor(idx / qnsPerSec);
       if (secIndex < secCount && userAnswers[idx] === q.correct) {
-        sectionScores[secIndex] += 1;
-        totalScore += 1;
+        sectionScores[secIndex] += marksPerQn;
+        totalScore += marksPerQn;
       }
     });
 
-    let maxTotal = activeAssessment.questions.length;
+    let maxTotal = activeAssessment.questions.length * marksPerQn;
     document.getElementById('total-score-display').innerText = `Total Score: ${totalScore} / ${maxTotal}`;
 
     let tbody = document.getElementById('result-table-body');
     tbody.innerHTML = '';
     sectionScores.forEach((score, sIdx) => {
+      let maxSecMarks = qnsPerSec * marksPerQn;
       let tr = document.createElement('tr');
-      tr.innerHTML = `<td>Section ${sIdx + 1}</td><td>${score}</td><td>${qnsPerSec}</td>`;
+      tr.innerHTML = `<td>Section ${sIdx + 1}</td><td>${score}</td><td>${maxSecMarks}</td>`;
       tbody.appendChild(tr);
     });
   }
