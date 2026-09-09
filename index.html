@@ -45,30 +45,47 @@
 
     h1, h2, h3 { text-align: center; color: var(--primary); margin-top: 0; }
 
-    .nav-buttons {
+    .menu-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: 500px;
+      margin: 25px auto 0 auto;
+    }
+
+    .button-row {
       display: flex;
       gap: 12px;
       justify-content: center;
-      margin-bottom: 25px;
-      flex-wrap: wrap;
     }
 
-    button {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px 20px;
+    .button-row button {
+      flex: 1;
+      padding: 14px 18px;
       font-size: 15px;
       font-weight: 600;
       border-radius: 6px;
+      border: none;
+      color: white;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
     }
 
-    button:hover { background-color: var(--primary-dark); }
-    button.btn-danger { background-color: var(--danger); }
-    button.btn-success { background-color: var(--success); }
-    button.btn-secondary { background-color: #5f6368; }
+    .button-row button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary { background-color: var(--primary); }
+    .btn-primary:hover { background-color: var(--primary-dark); }
+    
+    .btn-danger { background-color: var(--danger); }
+    .btn-danger:hover { background-color: #b3261e; }
+    
+    .btn-success { background-color: var(--success); }
+    .btn-success:hover { background-color: #13652b; }
+    
+    .btn-secondary { background-color: #5f6368; }
+    .btn-secondary:hover { background-color: #474a4d; }
 
     .view { display: none; }
     .active { display: block; }
@@ -108,6 +125,7 @@
       padding: 12px 16px;
       font-size: 16px;
       border-radius: 6px;
+      cursor: pointer;
     }
 
     .option-btn:hover { background: #e8f0fe; border-color: var(--primary); }
@@ -193,19 +211,20 @@
 
   <!-- MAIN MENU: ACCESS MODES -->
   <div id="initial-view" class="view active">
-    <h2 style="margin-bottom: 25px;">Select Access Mode</h2>
-    <div class="nav-buttons">
-      <!-- 1. Admin Driven Main Student Login -->
-      <button onclick="startAdminDrivenStudentLogin()">Student Login</button>
-      
-      <!-- 2. Faculty / Guest Login -->
-      <button class="btn-secondary" onclick="showGuestLoginModal()">Faculty / Guest Login</button>
-      
-      <!-- 3. Admin Login -->
-      <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
+    <h2 style="margin-bottom: 20px;">Select Access Mode</h2>
+    
+    <div class="menu-rows">
+      <!-- ROW 1: Admin Login & Faculty/Guest Login -->
+      <div class="button-row">
+        <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
+        <button class="btn-secondary" onclick="showGuestLoginModal()">Faculty / Guest Login</button>
+      </div>
 
-      <!-- 4. Student Login (Token) -->
-      <button class="btn-success" onclick="showStudentTokenModal()">Student Login (Token)</button>
+      <!-- ROW 2: Student Login & Student Login (Token) -->
+      <div class="button-row">
+        <button class="btn-primary" onclick="startAdminDrivenStudentLogin()">Student Login</button>
+        <button class="btn-success" onclick="showStudentTokenModal()">Student Login (Token)</button>
+      </div>
     </div>
   </div>
 
@@ -242,8 +261,8 @@
       </div>
     </div>
     <div style="text-align: center;">
-      <button class="btn-success" onclick="validateAndStartExam()">Start Assessment</button>
-      <button class="btn-secondary" onclick="showView('initial-view')">Back</button>
+      <button class="btn-success" style="padding: 12px 24px;" onclick="validateAndStartExam()">Start Assessment</button>
+      <button class="btn-secondary" style="padding: 12px 24px;" onclick="showView('initial-view')">Back</button>
     </div>
   </div>
 
@@ -260,7 +279,7 @@
     <div class="admin-card" style="margin-top: 30px; background: #e8f0fe; border-color: #b6d4fe;">
       <h3>Quick Controls</h3>
       <p>Current Student Access: <strong id="quick-access-status" style="color: var(--success);">Checking...</strong></p>
-      <button id="quick-toggle-btn" class="btn-danger" onclick="toggleStudentAccessQuick()">Disable Student Login Access</button>
+      <button id="quick-toggle-btn" class="btn-danger" style="padding: 10px 18px;" onclick="toggleStudentAccessQuick()">Disable Student Login Access</button>
     </div>
   </div>
 
@@ -309,8 +328,8 @@
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-      <button class="btn-success" onclick="saveAdminQuestion()">Save Question Modifications</button>
-      <button class="btn-secondary" onclick="showView('admin-dashboard-view')">Back to Dashboard</button>
+      <button class="btn-success" style="padding: 12px 20px;" onclick="saveAdminQuestion()">Save Question Modifications</button>
+      <button class="btn-secondary" style="padding: 12px 20px;" onclick="showView('admin-dashboard-view')">Back to Dashboard</button>
     </div>
   </div>
 
@@ -359,8 +378,8 @@
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-      <button class="btn-success" onclick="saveMasterAdminSettings()">Save Admin Settings</button>
-      <button class="btn-secondary" onclick="showView('admin-dashboard-view')">Back to Dashboard</button>
+      <button class="btn-success" style="padding: 12px 20px;" onclick="saveMasterAdminSettings()">Save Admin Settings</button>
+      <button class="btn-secondary" style="padding: 12px 20px;" onclick="showView('admin-dashboard-view')">Back to Dashboard</button>
     </div>
   </div>
 
@@ -402,8 +421,8 @@
     </div>
 
     <div style="text-align: center; margin-top:20px;">
-      <button class="btn-success" onclick="generateGuestAssessmentToken()">Generate Token & Save</button>
-      <button class="btn-secondary" onclick="showView('initial-view')">Exit Faculty/Guest Portal</button>
+      <button class="btn-success" style="padding: 12px 20px;" onclick="generateGuestAssessmentToken()">Generate Token & Save</button>
+      <button class="btn-secondary" style="padding: 12px 20px;" onclick="showView('initial-view')">Exit Faculty/Guest Portal</button>
     </div>
   </div>
 
@@ -423,8 +442,8 @@
     </div>
 
     <div style="text-align: right;">
-      <button id="next-btn" onclick="nextQuestion()">Next Question &raquo;</button>
-      <button id="eval-btn" class="btn-success" style="display:none;" onclick="evaluateExam()">Evaluate Answers</button>
+      <button id="next-btn" class="btn-primary" style="padding: 10px 20px;" onclick="nextQuestion()">Next Question &raquo;</button>
+      <button id="eval-btn" class="btn-success" style="display:none; padding: 10px 20px;" onclick="evaluateExam()">Evaluate Answers</button>
     </div>
   </div>
 
@@ -455,8 +474,8 @@
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-      <button class="btn-success" onclick="shareWithFaculty()">Share Result to Configured Drive</button>
-      <button class="btn-secondary" onclick="showView('initial-view')">Return to Home</button>
+      <button class="btn-success" style="padding: 12px 20px;" onclick="shareWithFaculty()">Share Result to Configured Drive</button>
+      <button class="btn-secondary" style="padding: 12px 20px;" onclick="showView('initial-view')">Return to Home</button>
     </div>
   </div>
 
@@ -616,7 +635,6 @@
         let loadedData = dataSnap.val();
         adminQuestionsList = Array.isArray(loadedData) ? loadedData : [];
 
-        // Build base placeholder array if empty or shorter than target section size
         if (adminQuestionsList.length < totalQns) {
           for (let i = adminQuestionsList.length; i < totalQns; i++) {
             let sNum = Math.floor(i / qnsPerSec) + 1;
