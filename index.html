@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Assessment Portal</title>
+  
+  <!-- Screenshot Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-dark: #1557b0;
+      --bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --text: #202124;
+      --border: #dadce0;
+      --danger: #d93025;
+      --success: #188038;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    h1, h2, h3 { text-align: center; color: var(--primary); margin-top: 0; }
+
+    .nav-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background-color: var(--primary-dark); }
+    button.btn-danger { background-color: var(--danger); }
+    button.btn-success { background-color: var(--success); }
+    button.btn-secondary { background-color: #5f6368; }
+
+    .view { display: none; }
+    .active { display: block; }
+
+    .exam-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #e8f0fe;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .timer-box {
+      font-size: 1.2rem;
+      color: var(--danger);
+      background: #fce8e6;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--danger);
+    }
+
+    .options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .option-btn {
+      background: #f8f9fa;
+      color: var(--text);
+      border: 2px solid var(--border);
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 16px;
+    }
+
+    .option-btn:hover { background: #e8f0fe; border-color: var(--primary); }
+    .option-btn.selected { background: #d2e3fc; border-color: var(--primary); font-weight: bold; }
+
+    .form-group { margin-bottom: 15px; }
+    .form-row { display: flex; gap: 15px; }
+    .form-row .form-group { flex: 1; }
+
+    label { display: block; margin-bottom: 5px; font-weight: 600; }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .token-display {
+      background: #e6f4ea;
+      border: 2px dashed var(--success);
+      padding: 15px;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--success);
+      margin: 15px 0;
+      border-radius: 8px;
+    }
+
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    .result-table th, .result-table td {
+      border: 1px solid var(--border);
+      padding: 10px;
+      text-align: center;
+    }
+    .result-table th { background-color: #f1f3f4; }
+
+    #screenshot-area {
+      padding: 25px;
+      background: #ffffff;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+    }
+    
+    .student-details-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .status-badge {
+      text-align: center;
+      padding: 6px;
+      font-size: 13px;
+      background: #e6f4ea;
+      color: var(--success);
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1 id="portal-title">Online Assessment Portal</h1>
+  <div id="sync-status" class="status-badge">Connected to Firebase (examportal2-d1584)</div>
+
+  <!-- INITIAL VIEW: ENTRY MODES -->
+  <div id="initial-view" class="view active">
+    <h2>Select Access Mode</h2>
+    <div class="nav-buttons">
+      <button onclick="showStudentTokenModal()">Student Login (Token)</button>
+      <button class="btn-secondary" onclick="showGuestLoginModal()">Guest Login</button>
+      <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
+    </div>
+  </div>
+
+  <!-- STUDENT LOGIN VIEW -->
+  <div id="student-login-view" class="view">
+    <h2>Student Details</h2>
+    <div class="student-details-card">
+      <p><strong>Active Assessment Token:</strong> <span id="active-token-label" style="color:var(--primary); font-weight:bold;">-</span></p>
+      <div class="form-group">
+        <label>Full Name:</label>
+        <input type="text" id="stud-name" placeholder="Enter full name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Department:</label>
+          <input type="text" id="stud-dept" placeholder="e.g. Civil Engineering">
+        </div>
+        <div class="form-group">
+          <label>Semester:</label>
+          <input type="text" id="stud-sem" placeholder="e.g. S6">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Class No:</label>
+          <input type="text" id="stud-class-num" placeholder="e.g. C1">
+        </div>
+        <div class="form-group">
+          <label>Roll No:</label>
+          <input type="text" id="stud-roll-num" placeholder="e.g. 24">
+        </div>
+      </div>
+    </div>
+    <div style="text-align: center;">
+      <button class="btn-success" onclick="validateAndStartExam()">Start Token Assessment</button>
+      <button class="btn-secondary" onclick="showView('initial-view')">Back</button>
+    </div>
+  </div>
+
+  <!-- GUEST CREATOR VIEW -->
+  <div id="guest-view" class="view">
+    <h2>Guest Assessment Builder</h2>
+    
+    <div class="form-group">
+      <label>Assessment Title:</label>
+      <input type="text" id="guest-exam-title" placeholder="e.g. Guest Quiz S6">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Number of Sections:</label>
+        <input type="number" id="guest-sec-count" value="2" min="1" max="10" onchange="buildGuestQuestionInputs()">
+      </div>
+      <div class="form-group">
+        <label>Questions per Section:</label>
+        <input type="number" id="guest-qns-per-sec" value="2" min="1" max="20" onchange="buildGuestQuestionInputs()">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Google Drive Folder Link (Submission Destination):</label>
+      <input type="text" id="guest-drive-url" placeholder="https://drive.google.com/...">
+    </div>
+
+    <h3>Configure Questions</h3>
+    <div id="guest-questions-container"></div>
+
+    <div id="token-result-box" style="display:none;" class="token-display">
+      Generated Token Number: <span id="generated-token-num"></span>
+    </div>
+
+    <div style="text-align: center; margin-top:20px;">
+      <button class="btn-success" onclick="generateGuestAssessmentToken()">Generate Token & Save</button>
+      <button class="btn-secondary" onclick="showView('initial-view')">Exit Guest Portal</button>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="admin-view" class="view">
+    <h2>Admin Master Panel</h2>
+    <p style="text-align:center;">Global Controls & Configurations</p>
+    <div style="text-align: center;">
+      <button class="btn-secondary" onclick="showView('initial-view')">Exit Admin Portal</button>
+    </div>
+  </div>
+
+  <!-- EXAM VIEW -->
+  <div id="exam-view" class="view">
+    <div class="exam-header">
+      <div>
+        <span id="exam-sec-title">Section 1</span> | 
+        <span id="exam-qn-num">Question 1</span>
+      </div>
+      <div class="timer-box">Time Left: <span id="timer">15</span>s</div>
+    </div>
+
+    <div id="qn-container">
+      <h3 id="qn-text">Question loading...</h3>
+      <div class="options-container" id="options-box"></div>
+    </div>
+
+    <div style="text-align: right;">
+      <button id="next-btn" onclick="nextQuestion()">Next Question &raquo;</button>
+      <button id="eval-btn" class="btn-success" style="display:none;" onclick="evaluateExam()">Evaluate Answers</button>
+    </div>
+  </div>
+
+  <!-- RESULT VIEW -->
+  <div id="result-view" class="view">
+    <div id="screenshot-area">
+      <h1 id="result-exam-title">Exam Result</h1>
+      <div class="student-details-card">
+        <p><strong>Student Name:</strong> <span id="res-stud-name">-</span></p>
+        <p><strong>Department:</strong> <span id="res-stud-dept">-</span> | <strong>Semester:</strong> <span id="res-stud-sem">-</span></p>
+        <p><strong>Class No:</strong> <span id="res-stud-class-num">-</span> | <strong>Roll No:</strong> <span id="res-stud-roll-num">-</span></p>
+        <p><strong>Assessment Token:</strong> <span id="res-token">-</span></p>
+      </div>
+
+      <h3 id="total-score-display">Total Score: 0</h3>
+      
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>Marks Obtained</th>
+            <th>Max Marks</th>
+          </tr>
+        </thead>
+        <tbody id="result-table-body"></tbody>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn-success" onclick="shareWithFaculty()">Share Result to Configured Drive</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // YOUR FIREBASE CONFIGURATION
+  const firebaseConfig = {
+    apiKey: "AIzaSyCTuB-3Vhy3R1-VkjjgoKxZ52r3556cUak",
+    authDomain: "examportal2-d1584.firebaseapp.com",
+    databaseURL: "https://examportal2-d1584-default-rtdb.firebaseio.com",
+    projectId: "examportal2-d1584",
+    storageBucket: "examportal2-d1584.firebasestorage.app",
+    messagingSenderId: "767849984338",
+    appId: "1:767849984338:web:f5011f8fd3465ef2054a8b"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // PASSWORDS
+  const ADMIN_PASSWORD = "RR@CET_Civil@2026";
+  const GUEST_PASSWORD = "CET_Civil@2026";
+
+  let activeAssessment = null;
+  let activeToken = "";
+  let userAnswers = [];
+  let currentQnIndex = 0;
+  let timerInterval = null;
+  let timeLeft = 15;
+
+  let currentStudent = {};
+
+  function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+  }
+
+  /* --- LOGIN MODALS --- */
+
+  function showAdminLoginModal() {
+    let pass = prompt("Enter Master Admin Password:");
+    if (pass === ADMIN_PASSWORD) {
+      showView('admin-view');
+    } else if (pass !== null) {
+      alert("Incorrect Admin Password!");
+    }
+  }
+
+  function showGuestLoginModal() {
+    let pass = prompt("Enter Guest Access Password:");
+    if (pass === GUEST_PASSWORD) {
+      buildGuestQuestionInputs();
+      showView('guest-view');
+    } else if (pass !== null) {
+      alert("Incorrect Guest Password!");
+    }
+  }
+
+  function showStudentTokenModal() {
+    let token = prompt("Enter Token Number provided by Guest/Faculty:");
+    if (!token) return;
+
+    token = token.trim().toUpperCase();
+    db.ref('assessments/' + token).once('value').then((snapshot) => {
+      if (snapshot.exists()) {
+        activeAssessment = snapshot.val();
+        activeToken = token;
+        document.getElementById('active-token-label').innerText = activeToken;
+        showView('student-login-view');
+      } else {
+        alert("Invalid Token Number. Please check and try again.");
+      }
+    });
+  }
+
+  /* --- GUEST QUESTION BUILDER --- */
+
+  function buildGuestQuestionInputs() {
+    const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
+    const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
+    const container = document.getElementById('guest-questions-container');
+    container.innerHTML = '';
+
+    let totalQns = secCount * qnsPerSec;
+    for (let i = 0; i < totalQns; i++) {
+      let secNum = Math.floor(i / qnsPerSec) + 1;
+      let qNum = (i % qnsPerSec) + 1;
+
+      let card = document.createElement('div');
+      card.style.cssText = "background:#f8f9fa; border:1px solid #dadce0; padding:15px; border-radius:8px; margin-bottom:15px;";
+      card.innerHTML = `
+        <strong>Section ${secNum} - Question ${qNum}</strong>
+        <div class="form-group" style="margin-top:8px;">
+          <input type="text" class="g-qn-text" placeholder="Enter Question Statement">
+        </div>
+        <div class="form-row">
+          <input type="text" class="g-opt-0" placeholder="Option A">
+          <input type="text" class="g-opt-1" placeholder="Option B">
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <input type="text" class="g-opt-2" placeholder="Option C">
+          <input type="text" class="g-opt-3" placeholder="Option D">
+        </div>
+        <div class="form-group" style="margin-top:8px;">
+          <label>Correct Choice:</label>
+          <select class="g-correct">
+            <option value="0">Option A</option>
+            <option value="1">Option B</option>
+            <option value="2">Option C</option>
+            <option value="3">Option D</option>
+          </select>
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  function generateGuestAssessmentToken() {
+    const title = document.getElementById('guest-exam-title').value.trim() || "Guest Assessment";
+    const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
+    const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
+    const driveUrl = document.getElementById('guest-drive-url').value.trim();
+
+    if (!driveUrl) {
+      alert("Please enter a Google Drive Link to receive student screenshots.");
+      return;
+    }
+
+    const cards = document.querySelectorAll('#guest-questions-container > div');
+    let compiledQuestions = [];
+
+    cards.forEach((card, idx) => {
+      let text = card.querySelector('.g-qn-text').value.trim() || `Question ${idx+1}`;
+      let opt0 = card.querySelector('.g-opt-0').value.trim() || "Option A";
+      let opt1 = card.querySelector('.g-opt-1').value.trim() || "Option B";
+      let opt2 = card.querySelector('.g-opt-2').value.trim() || "Option C";
+      let opt3 = card.querySelector('.g-opt-3').value.trim() || "Option D";
+      let correct = parseInt(card.querySelector('.g-correct').value);
+
+      let secNum = Math.floor(idx / qnsPerSec) + 1;
+      compiledQuestions.push({
+        section: `Section ${secNum}`,
+        text: text,
+        options: [opt0, opt1, opt2, opt3],
+        correct: correct
+      });
+    });
+
+    // Generate unique 6-character token
+    const token = "CET" + Math.floor(1000 + Math.random() * 9000);
+
+    const payload = {
+      title: title,
+      sectionsCount: secCount,
+      qnsPerSection: qnsPerSec,
+      driveUrl: driveUrl,
+      questions: compiledQuestions,
+      timePerQn: 15,
+      marksPerQn: 1
+    };
+
+    db.ref('assessments/' + token).set(payload)
+      .then(() => {
+        document.getElementById('generated-token-num').innerText = token;
+        document.getElementById('token-result-box').style.display = 'block';
+        alert(`Assessment Created Successfully!\nShare Token: ${token} with students.`);
+      })
+      .catch(err => alert("Error saving assessment: " + err.message));
+  }
+
+  /* --- EXAM EXECUTION --- */
+
+  function validateAndStartExam() {
+    let name = document.getElementById('stud-name').value.trim();
+    let dept = document.getElementById('stud-dept').value.trim();
+    let sem = document.getElementById('stud-sem').value.trim();
+    let classNum = document.getElementById('stud-class-num').value.trim();
+    let rollNum = document.getElementById('stud-roll-num').value.trim();
+
+    if (!name || !dept || !sem || !classNum || !rollNum) {
+      alert("Please fill in all student details.");
+      return;
+    }
+
+    currentStudent = { name, dept, sem, classNum, rollNum };
+    currentQnIndex = 0;
+    userAnswers = new Array(activeAssessment.questions.length).fill(null);
+    showView('exam-view');
+    loadExamQuestion();
+  }
+
+  function loadExamQuestion() {
+    clearInterval(timerInterval);
+    timeLeft = activeAssessment.timePerQn || 15;
+    document.getElementById('timer').innerText = timeLeft;
+
+    let q = activeAssessment.questions[currentQnIndex];
+    let totalQns = activeAssessment.questions.length;
+    let secNum = Math.floor(currentQnIndex / activeAssessment.qnsPerSection) + 1;
+
+    document.getElementById('exam-sec-title').innerText = `Section ${secNum}`;
+    document.getElementById('exam-qn-num').innerText = `Question ${currentQnIndex + 1} of ${totalQns}`;
+    document.getElementById('qn-text').innerText = `${currentQnIndex + 1}. ${q.text}`;
+
+    let optionsBox = document.getElementById('options-box');
+    optionsBox.innerHTML = '';
+
+    q.options.forEach((optText, optIdx) => {
+      let btn = document.createElement('button');
+      btn.className = 'option-btn';
+      if (userAnswers[currentQnIndex] === optIdx) btn.classList.add('selected');
+      btn.innerText = `${String.fromCharCode(65 + optIdx)}) ${optText}`;
+      btn.onclick = () => selectOption(optIdx);
+      optionsBox.appendChild(btn);
+    });
+
+    if (currentQnIndex === totalQns - 1) {
+      document.getElementById('next-btn').style.display = 'none';
+      document.getElementById('eval-btn').style.display = 'inline-block';
+    } else {
+      document.getElementById('next-btn').style.display = 'inline-block';
+      document.getElementById('eval-btn').style.display = 'none';
+    }
+
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timer').innerText = timeLeft;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        autoAdvance();
+      }
+    }, 1000);
+  }
+
+  function selectOption(optIdx) {
+    userAnswers[currentQnIndex] = optIdx;
+    let buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach((b, idx) => {
+      b.classList.toggle('selected', idx === optIdx);
+    });
+  }
+
+  function autoAdvance() {
+    if (currentQnIndex < activeAssessment.questions.length - 1) {
+      currentQnIndex++;
+      loadExamQuestion();
+    } else {
+      evaluateExam();
+    }
+  }
+
+  function nextQuestion() {
+    clearInterval(timerInterval);
+    if (currentQnIndex < activeAssessment.questions.length - 1) {
+      currentQnIndex++;
+      loadExamQuestion();
+    }
+  }
+
+  function evaluateExam() {
+    clearInterval(timerInterval);
+    showView('result-view');
+
+    document.getElementById('result-exam-title').innerText = activeAssessment.title || "Assessment Result";
+    document.getElementById('res-stud-name').innerText = currentStudent.name;
+    document.getElementById('res-stud-dept').innerText = currentStudent.dept;
+    document.getElementById('res-stud-sem').innerText = currentStudent.sem;
+    document.getElementById('res-stud-class-num').innerText = currentStudent.classNum;
+    document.getElementById('res-stud-roll-num').innerText = currentStudent.rollNum;
+    document.getElementById('res-token').innerText = activeToken;
+
+    let secCount = activeAssessment.sectionsCount;
+    let qnsPerSec = activeAssessment.qnsPerSection;
+    let sectionScores = new Array(secCount).fill(0);
+    let totalScore = 0;
+
+    activeAssessment.questions.forEach((q, idx) => {
+      let secIndex = Math.floor(idx / qnsPerSec);
+      if (userAnswers[idx] === q.correct) {
+        sectionScores[secIndex] += 1;
+        totalScore += 1;
+      }
+    });
+
+    let maxTotal = activeAssessment.questions.length;
+    document.getElementById('total-score-display').innerText = `Total Score: ${totalScore} / ${maxTotal}`;
+
+    let tbody = document.getElementById('result-table-body');
+    tbody.innerHTML = '';
+    sectionScores.forEach((score, sIdx) => {
+      let tr = document.createElement('tr');
+      tr.innerHTML = `<td>Section ${sIdx + 1}</td><td>${score}</td><td>${qnsPerSec}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function shareWithFaculty() {
+    const area = document.getElementById('screenshot-area');
+    html2canvas(area).then(canvas => {
+      let link = document.createElement('a');
+      let sanitized = currentStudent.name.replace(/[^a-zA-Z0-9]/g, "_");
+      link.download = `Result_${sanitized}_${activeToken}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+
+      alert("Result image downloaded. Redirecting to Google Drive destination...");
+      if (activeAssessment.driveUrl) {
+        window.open(activeAssessment.driveUrl, '_blank');
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
