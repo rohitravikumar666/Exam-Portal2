@@ -47,7 +47,7 @@
 
     .nav-buttons {
       display: flex;
-      gap: 15px;
+      gap: 12px;
       justify-content: center;
       margin-bottom: 25px;
       flex-wrap: wrap;
@@ -57,7 +57,7 @@
       background-color: var(--primary);
       color: white;
       border: none;
-      padding: 12px 24px;
+      padding: 12px 20px;
       font-size: 15px;
       font-weight: 600;
       border-radius: 6px;
@@ -173,6 +173,14 @@
       border-radius: 4px;
       margin-bottom: 15px;
     }
+
+    .admin-card {
+      border: 1px solid var(--border);
+      padding: 15px;
+      border-radius: 8px;
+      background: #fafafa;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
@@ -185,9 +193,17 @@
   <div id="initial-view" class="view active">
     <h2>Select Access Mode</h2>
     <div class="nav-buttons">
-      <button onclick="showStudentTokenModal()">Student Login (Token)</button>
+      <!-- 1. Admin Controlled Student Login -->
+      <button onclick="startAdminDrivenStudentLogin()">Student Login</button>
+      
+      <!-- 2. Guest Login -->
       <button class="btn-secondary" onclick="showGuestLoginModal()">Guest Login</button>
+      
+      <!-- 3. Admin Login -->
       <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
+
+      <!-- 4. Token-Based Student Login -->
+      <button class="btn-success" onclick="showStudentTokenModal()">Student Login (Token)</button>
     </div>
   </div>
 
@@ -195,7 +211,9 @@
   <div id="student-login-view" class="view">
     <h2>Student Details</h2>
     <div class="student-details-card">
-      <p><strong>Active Assessment Token:</strong> <span id="active-token-label" style="color:var(--primary); font-weight:bold;">-</span></p>
+      <p><strong>Active Assessment Token:</strong> <span id="active-token-label" style="color:var(--primary); font-weight:bold;">Admin Active</span></p>
+      <p><strong>Faculty / Evaluator:</strong> <span id="active-faculty-label" style="color:var(--text); font-weight:bold;">-</span></p>
+      
       <div class="form-group">
         <label>Full Name:</label>
         <input type="text" id="stud-name" placeholder="Enter full name">
@@ -222,7 +240,7 @@
       </div>
     </div>
     <div style="text-align: center;">
-      <button class="btn-success" onclick="validateAndStartExam()">Start Token Assessment</button>
+      <button class="btn-success" onclick="validateAndStartExam()">Start Assessment</button>
       <button class="btn-secondary" onclick="showView('initial-view')">Back</button>
     </div>
   </div>
@@ -232,8 +250,13 @@
     <h2>Guest Assessment Builder</h2>
     
     <div class="form-group">
+      <label>Guest / Faculty Name:</label>
+      <input type="text" id="guest-faculty-name" placeholder="e.g. Dr. Rohit / Guest Faculty">
+    </div>
+
+    <div class="form-group">
       <label>Assessment Title:</label>
-      <input type="text" id="guest-exam-title" placeholder="e.g. Guest Quiz S6">
+      <input type="text" id="guest-exam-title" placeholder="e.g. Mid-Term Quiz S6">
     </div>
 
     <div class="form-row">
@@ -267,9 +290,25 @@
 
   <!-- ADMIN DASHBOARD -->
   <div id="admin-view" class="view">
-    <h2>Admin Master Panel</h2>
-    <p style="text-align:center;">Global Controls & Configurations</p>
-    <div style="text-align: center;">
+    <h2>Admin Master Dashboard</h2>
+    
+    <div class="admin-card">
+      <h3>Active Admin Exam Configuration</h3>
+      <div class="form-group">
+        <label>Set Active Exam Token for Main Student Login:</label>
+        <input type="text" id="admin-active-token-input" placeholder="e.g. CET1234">
+      </div>
+      <button onclick="setMasterActiveToken()">Set Active Assessment</button>
+      <p>Currently Active Token: <strong id="current-master-token-display" style="color:var(--primary);">None</strong></p>
+    </div>
+
+    <div class="admin-card">
+      <h3>Quick Actions</h3>
+      <button class="btn-secondary" onclick="fetchLiveAssessments()">View Saved Assessments</button>
+      <div id="admin-assessment-list" style="margin-top:10px;"></div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
       <button class="btn-secondary" onclick="showView('initial-view')">Exit Admin Portal</button>
     </div>
   </div>
@@ -301,6 +340,7 @@
       <h1 id="result-exam-title">Exam Result</h1>
       <div class="student-details-card">
         <p><strong>Student Name:</strong> <span id="res-stud-name">-</span></p>
+        <p><strong>Faculty / Evaluator Name:</strong> <span id="res-faculty-name" style="color:var(--primary); font-weight:bold;">-</span></p>
         <p><strong>Department:</strong> <span id="res-stud-dept">-</span> | <strong>Semester:</strong> <span id="res-stud-sem">-</span></p>
         <p><strong>Class No:</strong> <span id="res-stud-class-num">-</span> | <strong>Roll No:</strong> <span id="res-stud-roll-num">-</span></p>
         <p><strong>Assessment Token:</strong> <span id="res-token">-</span></p>
@@ -322,13 +362,14 @@
 
     <div style="text-align: center; margin-top: 20px;">
       <button class="btn-success" onclick="shareWithFaculty()">Share Result to Configured Drive</button>
+      <button class="btn-secondary" onclick="showView('initial-view')">Return to Home</button>
     </div>
   </div>
 
 </div>
 
 <script>
-  // YOUR FIREBASE CONFIGURATION
+  // FIREBASE CONFIGURATION
   const firebaseConfig = {
     apiKey: "AIzaSyCTuB-3Vhy3R1-VkjjgoKxZ52r3556cUak",
     authDomain: "examportal2-d1584.firebaseapp.com",
@@ -360,11 +401,63 @@
     document.getElementById(viewId).classList.add('active');
   }
 
+  /* --- ADMIN DRIVEN STUDENT LOGIN --- */
+  function startAdminDrivenStudentLogin() {
+    db.ref('adminConfig/activeToken').once('value').then(snapshot => {
+      let activeMasterToken = snapshot.val();
+      if (!activeMasterToken) {
+        alert("No active exam has been set by the Admin yet.");
+        return;
+      }
+      loadTokenAssessment(activeMasterToken);
+    });
+  }
+
+  function setMasterActiveToken() {
+    let token = document.getElementById('admin-active-token-input').value.trim().toUpperCase();
+    if (!token) return;
+
+    db.ref('assessments/' + token).once('value').then(snapshot => {
+      if (snapshot.exists()) {
+        db.ref('adminConfig/activeToken').set(token).then(() => {
+          document.getElementById('current-master-token-display').innerText = token;
+          alert("Master Active Exam Token Updated!");
+        });
+      } else {
+        alert("Assessment with this Token does not exist.");
+      }
+    });
+  }
+
+  function fetchLiveAssessments() {
+    db.ref('assessments').once('value').then(snapshot => {
+      let container = document.getElementById('admin-assessment-list');
+      container.innerHTML = '';
+      if (!snapshot.exists()) {
+        container.innerText = "No assessments found.";
+        return;
+      }
+      snapshot.forEach(child => {
+        let key = child.key;
+        let val = child.val();
+        let div = document.createElement('div');
+        div.style.cssText = "padding:8px; border-bottom:1px solid #ddd;";
+        div.innerHTML = `<strong>Token: ${key}</strong> - ${val.title} (Faculty: ${val.facultyName || 'N/A'})`;
+        container.appendChild(div);
+      });
+    });
+  }
+
   /* --- LOGIN MODALS --- */
 
   function showAdminLoginModal() {
     let pass = prompt("Enter Master Admin Password:");
     if (pass === ADMIN_PASSWORD) {
+      db.ref('adminConfig/activeToken').once('value').then(snap => {
+        if(snap.exists()) {
+          document.getElementById('current-master-token-display').innerText = snap.val();
+        }
+      });
       showView('admin-view');
     } else if (pass !== null) {
       alert("Incorrect Admin Password!");
@@ -386,11 +479,16 @@
     if (!token) return;
 
     token = token.trim().toUpperCase();
+    loadTokenAssessment(token);
+  }
+
+  function loadTokenAssessment(token) {
     db.ref('assessments/' + token).once('value').then((snapshot) => {
       if (snapshot.exists()) {
         activeAssessment = snapshot.val();
         activeToken = token;
         document.getElementById('active-token-label').innerText = activeToken;
+        document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "N/A";
         showView('student-login-view');
       } else {
         alert("Invalid Token Number. Please check and try again.");
@@ -441,6 +539,7 @@
   }
 
   function generateGuestAssessmentToken() {
+    const facultyName = document.getElementById('guest-faculty-name').value.trim() || "Guest Faculty";
     const title = document.getElementById('guest-exam-title').value.trim() || "Guest Assessment";
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
     const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
@@ -471,10 +570,10 @@
       });
     });
 
-    // Generate unique 6-character token
     const token = "CET" + Math.floor(1000 + Math.random() * 9000);
 
     const payload = {
+      facultyName: facultyName,
       title: title,
       sectionsCount: secCount,
       qnsPerSection: qnsPerSec,
@@ -588,6 +687,7 @@
 
     document.getElementById('result-exam-title').innerText = activeAssessment.title || "Assessment Result";
     document.getElementById('res-stud-name').innerText = currentStudent.name;
+    document.getElementById('res-faculty-name').innerText = activeAssessment.facultyName || "N/A";
     document.getElementById('res-stud-dept').innerText = currentStudent.dept;
     document.getElementById('res-stud-sem').innerText = currentStudent.sem;
     document.getElementById('res-stud-class-num').innerText = currentStudent.classNum;
