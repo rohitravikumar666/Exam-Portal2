@@ -107,6 +107,7 @@
       text-align: left;
       padding: 12px 16px;
       font-size: 16px;
+      border-radius: 6px;
     }
 
     .option-btn:hover { background: #e8f0fe; border-color: var(--primary); }
@@ -176,10 +177,11 @@
 
     .admin-card {
       border: 1px solid var(--border);
-      padding: 15px;
+      padding: 20px;
       border-radius: 8px;
-      background: #fafafa;
+      background: #fdfdfd;
       margin-bottom: 20px;
+      text-align: center;
     }
   </style>
 </head>
@@ -187,13 +189,13 @@
 
 <div class="container">
   <h1 id="portal-title">Online Assessment Portal</h1>
-  <div id="sync-status" class="status-badge">Connected to Firebase (examportal2-d1584)</div>
+  <div id="sync-status" class="status-badge">✓ Connected to Firebase (Live Cloud Sync Active)</div>
 
-  <!-- INITIAL VIEW: ENTRY MODES -->
+  <!-- MAIN MENU: ACCESS MODES -->
   <div id="initial-view" class="view active">
-    <h2>Select Access Mode</h2>
+    <h2 style="margin-bottom: 25px;">Select Access Mode</h2>
     <div class="nav-buttons">
-      <!-- 1. Admin Controlled Student Login -->
+      <!-- 1. Admin Driven Main Student Login -->
       <button onclick="startAdminDrivenStudentLogin()">Student Login</button>
       
       <!-- 2. Guest Login -->
@@ -202,7 +204,7 @@
       <!-- 3. Admin Login -->
       <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
 
-      <!-- 4. Token-Based Student Login -->
+      <!-- 4. Student Login (Token) -->
       <button class="btn-success" onclick="showStudentTokenModal()">Student Login (Token)</button>
     </div>
   </div>
@@ -211,7 +213,7 @@
   <div id="student-login-view" class="view">
     <h2>Student Details</h2>
     <div class="student-details-card">
-      <p><strong>Active Assessment Token:</strong> <span id="active-token-label" style="color:var(--primary); font-weight:bold;">Admin Active</span></p>
+      <p><strong>Assessment:</strong> <span id="active-exam-label" style="color:var(--primary); font-weight:bold;">-</span></p>
       <p><strong>Faculty / Evaluator:</strong> <span id="active-faculty-label" style="color:var(--text); font-weight:bold;">-</span></p>
       
       <div class="form-group">
@@ -242,6 +244,123 @@
     <div style="text-align: center;">
       <button class="btn-success" onclick="validateAndStartExam()">Start Assessment</button>
       <button class="btn-secondary" onclick="showView('initial-view')">Back</button>
+    </div>
+  </div>
+
+  <!-- ADMIN: FACULTY CONTROL PANEL (MAIN DASHBOARD) -->
+  <div id="admin-dashboard-view" class="view">
+    <h2>Faculty Control Panel</h2>
+    
+    <div style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 25px auto;">
+      <button class="btn-primary" style="padding: 15px; font-size: 16px;" onclick="showAdminModifyQuestions()">1) Add / Modify Questions</button>
+      <button class="btn-primary" style="padding: 15px; font-size: 16px;" onclick="showAdminSettingsView()">2) Admin Settings</button>
+      <button class="btn-secondary" style="padding: 12px;" onclick="showView('initial-view')">Exit Faculty Portal</button>
+    </div>
+
+    <div class="admin-card" style="margin-top: 30px; background: #e8f0fe; border-color: #b6d4fe;">
+      <h3>Quick Controls</h3>
+      <p>Current Student Access: <strong id="quick-access-status" style="color: var(--success);">Checking...</strong></p>
+      <button id="quick-toggle-btn" class="btn-danger" onclick="toggleStudentAccessQuick()">Disable Student Login Access</button>
+    </div>
+  </div>
+
+  <!-- ADMIN: ADD / MODIFY QUESTIONS -->
+  <div id="admin-modify-qn-view" class="view">
+    <h2>Add / Modify Questions (Live Cloud Sync)</h2>
+    
+    <div class="form-group">
+      <label>Select Question:</label>
+      <select id="admin-qn-select" onchange="loadSelectedAdminQuestion()"></select>
+    </div>
+
+    <div class="form-group">
+      <label>Question Text:</label>
+      <input type="text" id="admin-qn-text-input" placeholder="Enter Question Statement">
+    </div>
+
+    <div class="form-group">
+      <label>Option A:</label>
+      <input type="text" id="admin-opt-a" placeholder="Option A text">
+    </div>
+
+    <div class="form-group">
+      <label>Option B:</label>
+      <input type="text" id="admin-opt-b" placeholder="Option B text">
+    </div>
+
+    <div class="form-group">
+      <label>Option C:</label>
+      <input type="text" id="admin-opt-c" placeholder="Option C text">
+    </div>
+
+    <div class="form-group">
+      <label>Option D:</label>
+      <input type="text" id="admin-opt-d" placeholder="Option D text">
+    </div>
+
+    <div class="form-group">
+      <label>Correct Option:</label>
+      <select id="admin-correct-opt">
+        <option value="0">Option A</option>
+        <option value="1">Option B</option>
+        <option value="2">Option C</option>
+        <option value="3">Option D</option>
+      </select>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn-success" onclick="saveAdminQuestion()">Save Question Modifications</button>
+      <button class="btn-secondary" onclick="showView('admin-dashboard-view')">Back to Dashboard</button>
+    </div>
+  </div>
+
+  <!-- ADMIN: SETTINGS VIEW -->
+  <div id="admin-settings-view" class="view">
+    <h2>Admin Settings</h2>
+
+    <div class="form-group">
+      <label>Exam Name (Displayed at Top & on Results):</label>
+      <input type="text" id="cfg-exam-name" placeholder="Survey Lab">
+    </div>
+
+    <div class="form-group">
+      <label>Student Login Access:</label>
+      <select id="cfg-student-access">
+        <option value="enabled">Enabled (Students Can Start)</option>
+        <option value="disabled">Disabled (Access Blocked)</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Number of Sections:</label>
+        <input type="number" id="cfg-sec-count" value="12" min="1">
+      </div>
+      <div class="form-group">
+        <label>Questions per Section:</label>
+        <input type="number" id="cfg-qns-per-sec" value="5" min="1">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Time per Question (Seconds):</label>
+        <input type="number" id="cfg-time-per-qn" value="10" min="5">
+      </div>
+      <div class="form-group">
+        <label>Marks per Question:</label>
+        <input type="number" id="cfg-marks-per-qn" value="1" min="1">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Google Drive Upload Link:</label>
+      <input type="text" id="cfg-drive-url" placeholder="https://drive.google.com/drive/folders/...">
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="btn-success" onclick="saveMasterAdminSettings()">Save Admin Settings</button>
+      <button class="btn-secondary" onclick="showView('admin-dashboard-view')">Back to Dashboard</button>
     </div>
   </div>
 
@@ -288,32 +407,7 @@
     </div>
   </div>
 
-  <!-- ADMIN DASHBOARD -->
-  <div id="admin-view" class="view">
-    <h2>Admin Master Dashboard</h2>
-    
-    <div class="admin-card">
-      <h3>Active Admin Exam Configuration</h3>
-      <div class="form-group">
-        <label>Set Active Exam Token for Main Student Login:</label>
-        <input type="text" id="admin-active-token-input" placeholder="e.g. CET1234">
-      </div>
-      <button onclick="setMasterActiveToken()">Set Active Assessment</button>
-      <p>Currently Active Token: <strong id="current-master-token-display" style="color:var(--primary);">None</strong></p>
-    </div>
-
-    <div class="admin-card">
-      <h3>Quick Actions</h3>
-      <button class="btn-secondary" onclick="fetchLiveAssessments()">View Saved Assessments</button>
-      <div id="admin-assessment-list" style="margin-top:10px;"></div>
-    </div>
-
-    <div style="text-align: center; margin-top: 20px;">
-      <button class="btn-secondary" onclick="showView('initial-view')">Exit Admin Portal</button>
-    </div>
-  </div>
-
-  <!-- EXAM VIEW -->
+  <!-- EXAM EXECUTION VIEW -->
   <div id="exam-view" class="view">
     <div class="exam-header">
       <div>
@@ -343,7 +437,7 @@
         <p><strong>Faculty / Evaluator Name:</strong> <span id="res-faculty-name" style="color:var(--primary); font-weight:bold;">-</span></p>
         <p><strong>Department:</strong> <span id="res-stud-dept">-</span> | <strong>Semester:</strong> <span id="res-stud-sem">-</span></p>
         <p><strong>Class No:</strong> <span id="res-stud-class-num">-</span> | <strong>Roll No:</strong> <span id="res-stud-roll-num">-</span></p>
-        <p><strong>Assessment Token:</strong> <span id="res-token">-</span></p>
+        <p><strong>Assessment Mode / Token:</strong> <span id="res-token">-</span></p>
       </div>
 
       <h3 id="total-score-display">Total Score: 0</h3>
@@ -388,12 +482,11 @@
   const GUEST_PASSWORD = "CET_Civil@2026";
 
   let activeAssessment = null;
-  let activeToken = "";
+  let activeToken = "Admin Active";
   let userAnswers = [];
   let currentQnIndex = 0;
   let timerInterval = null;
   let timeLeft = 15;
-
   let currentStudent = {};
 
   function showView(viewId) {
@@ -401,69 +494,190 @@
     document.getElementById(viewId).classList.add('active');
   }
 
-  /* --- ADMIN DRIVEN STUDENT LOGIN --- */
+  /* --- 1. ADMIN DRIVEN MAIN STUDENT LOGIN --- */
   function startAdminDrivenStudentLogin() {
-    db.ref('adminConfig/activeToken').once('value').then(snapshot => {
-      let activeMasterToken = snapshot.val();
-      if (!activeMasterToken) {
-        alert("No active exam has been set by the Admin yet.");
+    db.ref('masterAdminConfig').once('value').then(snapshot => {
+      const config = snapshot.val();
+      if (!config || config.studentAccess !== 'enabled') {
+        alert("Student Login is currently disabled by Admin.");
         return;
       }
-      loadTokenAssessment(activeMasterToken);
-    });
-  }
 
-  function setMasterActiveToken() {
-    let token = document.getElementById('admin-active-token-input').value.trim().toUpperCase();
-    if (!token) return;
+      // Fetch questions and settings
+      db.ref('masterAdminData').once('value').then(dataSnap => {
+        const adminData = dataSnap.val();
+        if (!adminData || !adminData.questions || adminData.questions.length === 0) {
+          alert("No questions configured in the Admin Portal yet.");
+          return;
+        }
 
-    db.ref('assessments/' + token).once('value').then(snapshot => {
-      if (snapshot.exists()) {
-        db.ref('adminConfig/activeToken').set(token).then(() => {
-          document.getElementById('current-master-token-display').innerText = token;
-          alert("Master Active Exam Token Updated!");
-        });
-      } else {
-        alert("Assessment with this Token does not exist.");
-      }
-    });
-  }
+        activeAssessment = {
+          title: config.examName || "Survey Lab",
+          facultyName: config.facultyName || "Department Admin",
+          sectionsCount: parseInt(config.sectionsCount) || 12,
+          qnsPerSection: parseInt(config.qnsPerSection) || 5,
+          timePerQn: parseInt(config.timePerQn) || 10,
+          marksPerQn: parseInt(config.marksPerQn) || 1,
+          driveUrl: config.driveUrl || "",
+          questions: adminData.questions
+        };
 
-  function fetchLiveAssessments() {
-    db.ref('assessments').once('value').then(snapshot => {
-      let container = document.getElementById('admin-assessment-list');
-      container.innerHTML = '';
-      if (!snapshot.exists()) {
-        container.innerText = "No assessments found.";
-        return;
-      }
-      snapshot.forEach(child => {
-        let key = child.key;
-        let val = child.val();
-        let div = document.createElement('div');
-        div.style.cssText = "padding:8px; border-bottom:1px solid #ddd;";
-        div.innerHTML = `<strong>Token: ${key}</strong> - ${val.title} (Faculty: ${val.facultyName || 'N/A'})`;
-        container.appendChild(div);
+        activeToken = "Admin Managed Exam";
+        document.getElementById('active-exam-label').innerText = activeAssessment.title;
+        document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName;
+        showView('student-login-view');
       });
     });
   }
 
-  /* --- LOGIN MODALS --- */
-
+  /* --- 2. ADMIN CONTROL PANEL LOGIC --- */
   function showAdminLoginModal() {
     let pass = prompt("Enter Master Admin Password:");
     if (pass === ADMIN_PASSWORD) {
-      db.ref('adminConfig/activeToken').once('value').then(snap => {
-        if(snap.exists()) {
-          document.getElementById('current-master-token-display').innerText = snap.val();
-        }
-      });
-      showView('admin-view');
+      loadAdminDashboard();
+      showView('admin-dashboard-view');
     } else if (pass !== null) {
       alert("Incorrect Admin Password!");
     }
   }
 
+  function loadAdminDashboard() {
+    db.ref('masterAdminConfig/studentAccess').once('value').then(snap => {
+      let isEnabled = snap.val() === 'enabled';
+      let statusTxt = document.getElementById('quick-access-status');
+      let btn = document.getElementById('quick-toggle-btn');
+      
+      if (isEnabled) {
+        statusTxt.innerText = "Enabled (Students Can Login)";
+        statusTxt.style.color = "var(--success)";
+        btn.innerText = "Disable Student Login Access";
+        btn.className = "btn-danger";
+      } else {
+        statusTxt.innerText = "Disabled (Access Blocked)";
+        statusTxt.style.color = "var(--danger)";
+        btn.innerText = "Enable Student Login Access";
+        btn.className = "btn-success";
+      }
+    });
+  }
+
+  function toggleStudentAccessQuick() {
+    db.ref('masterAdminConfig/studentAccess').once('value').then(snap => {
+      let current = snap.val();
+      let nextState = current === 'enabled' ? 'disabled' : 'enabled';
+      db.ref('masterAdminConfig/studentAccess').set(nextState).then(() => {
+        loadAdminDashboard();
+      });
+    });
+  }
+
+  function showAdminSettingsView() {
+    db.ref('masterAdminConfig').once('value').then(snap => {
+      let cfg = snap.val() || {};
+      document.getElementById('cfg-exam-name').value = cfg.examName || "Survey Lab";
+      document.getElementById('cfg-student-access').value = cfg.studentAccess || "enabled";
+      document.getElementById('cfg-sec-count').value = cfg.sectionsCount || 12;
+      document.getElementById('cfg-qns-per-sec').value = cfg.qnsPerSection || 5;
+      document.getElementById('cfg-time-per-qn').value = cfg.timePerQn || 10;
+      document.getElementById('cfg-marks-per-qn').value = cfg.marksPerQn || 1;
+      document.getElementById('cfg-drive-url').value = cfg.driveUrl || "";
+      showView('admin-settings-view');
+    });
+  }
+
+  function saveMasterAdminSettings() {
+    let payload = {
+      examName: document.getElementById('cfg-exam-name').value.trim() || "Survey Lab",
+      studentAccess: document.getElementById('cfg-student-access').value,
+      sectionsCount: parseInt(document.getElementById('cfg-sec-count').value) || 12,
+      qnsPerSection: parseInt(document.getElementById('cfg-qns-per-sec').value) || 5,
+      timePerQn: parseInt(document.getElementById('cfg-time-per-qn').value) || 10,
+      marksPerQn: parseInt(document.getElementById('cfg-marks-per-qn').value) || 1,
+      driveUrl: document.getElementById('cfg-drive-url').value.trim(),
+      facultyName: "Department Admin"
+    };
+
+    db.ref('masterAdminConfig').update(payload).then(() => {
+      alert("Admin Settings saved successfully!");
+      showView('admin-dashboard-view');
+    });
+  }
+
+  /* --- 3. ADD / MODIFY QUESTIONS LOGIC --- */
+  let adminQuestionsList = [];
+
+  function showAdminModifyQuestions() {
+    db.ref('masterAdminConfig').once('value').then(cfgSnap => {
+      let cfg = cfgSnap.val() || { sectionsCount: 12, qnsPerSection: 5 };
+      let secCount = parseInt(cfg.sectionsCount) || 12;
+      let qnsPerSec = parseInt(cfg.qnsPerSection) || 5;
+      let totalQns = secCount * qnsPerSec;
+
+      db.ref('masterAdminData/questions').once('value').then(dataSnap => {
+        adminQuestionsList = dataSnap.val() || [];
+
+        // Ensure array length matches total questions required
+        if (adminQuestionsList.length < totalQns) {
+          for (let i = adminQuestionsList.length; i < totalQns; i++) {
+            let sNum = Math.floor(i / qnsPerSec) + 1;
+            let qNum = (i % qnsPerSec) + 1;
+            adminQuestionsList.push({
+              section: `Section ${sNum}`,
+              text: `Sample Question ${i+1} (Sec ${sNum} Q${qNum}): Select the correct statement.`,
+              options: ["Option A Text", "Option B Text", "Option C Text", "Option D Text"],
+              correct: 0
+            });
+          }
+        }
+
+        let selectEl = document.getElementById('admin-qn-select');
+        selectEl.innerHTML = '';
+        adminQuestionsList.forEach((q, idx) => {
+          let sNum = Math.floor(idx / qnsPerSec) + 1;
+          let qNum = (idx % qnsPerSec) + 1;
+          let opt = document.createElement('option');
+          opt.value = idx;
+          opt.innerText = `Q${idx+1} [Section ${sNum} - Question ${qNum}]`;
+          selectEl.appendChild(opt);
+        });
+
+        loadSelectedAdminQuestion();
+        showView('admin-modify-qn-view');
+      });
+    });
+  }
+
+  function loadSelectedAdminQuestion() {
+    let idx = parseInt(document.getElementById('admin-qn-select').value) || 0;
+    let q = adminQuestionsList[idx];
+
+    document.getElementById('admin-qn-text-input').value = q.text || '';
+    document.getElementById('admin-opt-a').value = q.options ? q.options[0] : '';
+    document.getElementById('admin-opt-b').value = q.options ? q.options[1] : '';
+    document.getElementById('admin-opt-c').value = q.options ? q.options[2] : '';
+    document.getElementById('admin-opt-d').value = q.options ? q.options[3] : '';
+    document.getElementById('admin-correct-opt').value = q.correct !== undefined ? q.correct : 0;
+  }
+
+  function saveAdminQuestion() {
+    let idx = parseInt(document.getElementById('admin-qn-select').value) || 0;
+    adminQuestionsList[idx] = {
+      text: document.getElementById('admin-qn-text-input').value.trim(),
+      options: [
+        document.getElementById('admin-opt-a').value.trim(),
+        document.getElementById('admin-opt-b').value.trim(),
+        document.getElementById('admin-opt-c').value.trim(),
+        document.getElementById('admin-opt-d').value.trim()
+      ],
+      correct: parseInt(document.getElementById('admin-correct-opt').value)
+    };
+
+    db.ref('masterAdminData/questions').set(adminQuestionsList).then(() => {
+      alert(`Question Q${idx+1} updated and synced live!`);
+    });
+  }
+
+  /* --- 4. GUEST & TOKEN MODAL LOGIC --- */
   function showGuestLoginModal() {
     let pass = prompt("Enter Guest Access Password:");
     if (pass === GUEST_PASSWORD) {
@@ -479,15 +693,11 @@
     if (!token) return;
 
     token = token.trim().toUpperCase();
-    loadTokenAssessment(token);
-  }
-
-  function loadTokenAssessment(token) {
     db.ref('assessments/' + token).once('value').then((snapshot) => {
       if (snapshot.exists()) {
         activeAssessment = snapshot.val();
         activeToken = token;
-        document.getElementById('active-token-label').innerText = activeToken;
+        document.getElementById('active-exam-label').innerText = activeAssessment.title;
         document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "N/A";
         showView('student-login-view');
       } else {
@@ -495,8 +705,6 @@
       }
     });
   }
-
-  /* --- GUEST QUESTION BUILDER --- */
 
   function buildGuestQuestionInputs() {
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
@@ -592,8 +800,7 @@
       .catch(err => alert("Error saving assessment: " + err.message));
   }
 
-  /* --- EXAM EXECUTION --- */
-
+  /* --- 5. EXAM EXECUTION & RESULTS --- */
   function validateAndStartExam() {
     let name = document.getElementById('stud-name').value.trim();
     let dept = document.getElementById('stud-dept').value.trim();
@@ -615,12 +822,13 @@
 
   function loadExamQuestion() {
     clearInterval(timerInterval);
-    timeLeft = activeAssessment.timePerQn || 15;
+    timeLeft = activeAssessment.timePerQn || 10;
     document.getElementById('timer').innerText = timeLeft;
 
     let q = activeAssessment.questions[currentQnIndex];
     let totalQns = activeAssessment.questions.length;
-    let secNum = Math.floor(currentQnIndex / activeAssessment.qnsPerSection) + 1;
+    let qnsPerSec = activeAssessment.qnsPerSection || 1;
+    let secNum = Math.floor(currentQnIndex / qnsPerSec) + 1;
 
     document.getElementById('exam-sec-title').innerText = `Section ${secNum}`;
     document.getElementById('exam-qn-num').innerText = `Question ${currentQnIndex + 1} of ${totalQns}`;
@@ -694,14 +902,14 @@
     document.getElementById('res-stud-roll-num').innerText = currentStudent.rollNum;
     document.getElementById('res-token').innerText = activeToken;
 
-    let secCount = activeAssessment.sectionsCount;
-    let qnsPerSec = activeAssessment.qnsPerSection;
+    let secCount = activeAssessment.sectionsCount || 1;
+    let qnsPerSec = activeAssessment.qnsPerSection || 1;
     let sectionScores = new Array(secCount).fill(0);
     let totalScore = 0;
 
     activeAssessment.questions.forEach((q, idx) => {
       let secIndex = Math.floor(idx / qnsPerSec);
-      if (userAnswers[idx] === q.correct) {
+      if (secIndex < secCount && userAnswers[idx] === q.correct) {
         sectionScores[secIndex] += 1;
         totalScore += 1;
       }
