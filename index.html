@@ -144,25 +144,51 @@
       margin-bottom: 16px;
     }
 
-    .global-actions-bar {
-      background: #fce8e6;
-      border: 1px solid #f5c2c7;
-      padding: 16px;
+    /* TOKEN OVERVIEW TABLE STYLING */
+    .overview-container {
+      background: #fafafa;
+      border: 1px solid var(--border);
       border-radius: 10px;
+      padding: 20px;
       margin-bottom: 24px;
-      text-align: center;
     }
 
-    .global-actions-bar h3 {
+    .overview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      background: #ffffff;
+    }
+
+    .overview-table th, .overview-table td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    .overview-table th {
+      background-color: var(--accent);
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    .badge-active {
+      color: var(--success);
+      font-weight: bold;
+      background: #e6f4ea;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .badge-disabled {
       color: var(--danger);
-      margin-bottom: 12px;
-    }
-
-    .global-btn-group {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
+      font-weight: bold;
+      background: #fce8e6;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
     }
 
     /* FORM STYLING */
@@ -411,16 +437,27 @@
   <div id="admin-dashboard-view" class="view">
     <h2>Admin Control Panel</h2>
 
-    <!-- GLOBAL BULK CONTROLS -->
-    <div class="global-actions-bar">
-      <h3>Bulk Master Controls</h3>
-      <div class="global-btn-group">
-        <button class="btn btn-warning" onclick="adminDisableAllTokens()">🔒 Disable All Tokens</button>
-        <button class="btn btn-success" onclick="adminReactivateAllTokens()">🔓 Reactivate All Tokens</button>
-        <button class="btn btn-danger" onclick="adminDeleteAllTokens()">🗑️ Delete All Tokens</button>
-      </div>
+    <!-- DATABASE ASSESSMENT OVERVIEW TABLE -->
+    <div class="overview-container">
+      <h3 style="margin-bottom: 8px;">Database Tokens Summary</h3>
+      <table class="overview-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Faculty Name</th>
+            <th>Assessment Title</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="admin-tokens-table-body">
+          <tr>
+            <td colspan="4" style="text-align:center; color: var(--text-muted);">Fetching token data...</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     
+    <!-- SINGLE TOKEN ACTIONS -->
     <div class="dashboard-grid">
       <div class="dashboard-card">
         <h3>1) Create New Token</h3>
@@ -656,6 +693,7 @@
 
   function exitEditorView() {
     if (currentMode === "ADMIN") {
+      loadAdminTokenOverview();
       showView('admin-dashboard-view');
     } else if (currentMode === "FACULTY") {
       showView('faculty-dashboard-view');
@@ -669,13 +707,51 @@
     let pass = prompt("Enter Master Admin Password:");
     if (pass === ADMIN_PASSWORD) {
       currentMode = "ADMIN";
+      loadAdminTokenOverview();
       showView('admin-dashboard-view');
     } else if (pass !== null) {
       alert("Incorrect Password!");
     }
   }
 
-  /* --- 2. ADMIN PANEL ACTIONS --- */
+  /* --- 2. ADMIN SUMMARY TABLE LOADER --- */
+  function loadAdminTokenOverview() {
+    const tbody = document.getElementById('admin-tokens-table-body');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Fetching token data...</td></tr>';
+
+    db.ref('assessments').once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No assessment tokens found in database.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      snapshot.forEach(child => {
+        let token = child.key;
+        let data = child.val();
+        let faculty = data.facultyName || "Not Specified";
+        let title = data.title || "Untitled Assessment";
+        let isDisabled = data.disabled === true;
+
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${token}</strong></td>
+          <td>${faculty}</td>
+          <td>${title}</td>
+          <td>
+            <span class="${isDisabled ? 'badge-disabled' : 'badge-active'}">
+              ${isDisabled ? 'Disabled' : 'Active'}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }).catch(err => {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--danger);">Error loading token summary: ${err.message}</td></tr>`;
+    });
+  }
+
+  /* --- 3. ADMIN PANEL ACTIONS --- */
   function adminCreateNewToken() {
     resetGuestForm();
     document.getElementById('admin-token-search-box').style.display = 'block';
@@ -709,6 +785,7 @@
       }
       db.ref('assessments/' + token + '/disabled').set(true).then(() => {
         alert(`Token ${token} has been DISABLED.`);
+        loadAdminTokenOverview();
       });
     }).catch(err => alert("Error: " + err.message));
   }
@@ -726,6 +803,7 @@
       }
       db.ref('assessments/' + token + '/disabled').set(false).then(() => {
         alert(`Token ${token} has been REACTIVATED.`);
+        loadAdminTokenOverview();
       });
     }).catch(err => alert("Error: " + err.message));
   }
@@ -739,68 +817,12 @@
     if (confirm(`Are you sure you want to permanently delete token ${token}?`)) {
       db.ref('assessments/' + token).remove().then(() => {
         alert(`Token ${token} deleted successfully.`);
+        loadAdminTokenOverview();
       }).catch(err => alert("Error deleting token: " + err.message));
     }
   }
 
-  // Disable ALL Tokens
-  function adminDisableAllTokens() {
-    if (!confirm("Are you sure you want to DISABLE ALL assessment tokens across the database?")) return;
-
-    db.ref('assessments').once('value').then(snapshot => {
-      if (!snapshot.exists()) {
-        alert("No tokens found in database.");
-        return;
-      }
-
-      let updates = {};
-      snapshot.forEach(child => {
-        updates[child.key + '/disabled'] = true;
-      });
-
-      db.ref('assessments').update(updates).then(() => {
-        alert("ALL assessment tokens have been DISABLED successfully.");
-      });
-    }).catch(err => alert("Error disabling tokens: " + err.message));
-  }
-
-  // Reactivate ALL Tokens
-  function adminReactivateAllTokens() {
-    if (!confirm("Are you sure you want to REACTIVATE ALL assessment tokens across the database?")) return;
-
-    db.ref('assessments').once('value').then(snapshot => {
-      if (!snapshot.exists()) {
-        alert("No tokens found in database.");
-        return;
-      }
-
-      let updates = {};
-      snapshot.forEach(child => {
-        updates[child.key + '/disabled'] = false;
-      });
-
-      db.ref('assessments').update(updates).then(() => {
-        alert("ALL assessment tokens have been REACTIVATED successfully.");
-      });
-    }).catch(err => alert("Error reactivating tokens: " + err.message));
-  }
-
-  // Delete ALL Tokens
-  function adminDeleteAllTokens() {
-    let confirm1 = confirm("⚠️ WARNING: Are you sure you want to PERMANENTLY DELETE ALL assessment tokens from the database?");
-    if (!confirm1) return;
-
-    let confirm2 = prompt("Type DELETE ALL in capital letters to confirm total deletion:");
-    if (confirm2 === "DELETE ALL") {
-      db.ref('assessments').remove().then(() => {
-        alert("ALL assessment tokens have been permanently deleted.");
-      }).catch(err => alert("Error purging tokens: " + err.message));
-    } else {
-      alert("Action cancelled. Secret phrase did not match.");
-    }
-  }
-
-  /* --- 3. FACULTY LOGIN & DASHBOARD ACTIONS --- */
+  /* --- 4. FACULTY LOGIN & DASHBOARD ACTIONS --- */
   function showFacultyLoginModal() {
     let pass = prompt("Enter Faculty Access Password:");
     if (pass === FACULTY_PASSWORD) {
@@ -863,7 +885,7 @@
     }).catch(err => alert("Error reactivating token: " + err.message));
   }
 
-  /* --- 4. FETCH EXISTING TOKEN OR RESET FORM --- */
+  /* --- 5. FETCH EXISTING TOKEN OR RESET FORM --- */
   function loadExistingTokenData() {
     let tokenInput = document.getElementById('existing-token-input').value.trim().toUpperCase();
     if (!tokenInput) {
@@ -916,7 +938,7 @@
     buildGuestQuestionInputs();
   }
 
-  /* --- 5. STUDENT TOKEN LOGIN --- */
+  /* --- 6. STUDENT TOKEN LOGIN --- */
   function showStudentTokenModal() {
     let token = prompt("Enter Assessment Token Number:");
     if (!token) return;
@@ -942,7 +964,7 @@
     }).catch(err => alert("Error accessing token: " + err.message));
   }
 
-  /* --- 6. QUESTION BUILDER & TOKEN SAVE/UPDATE --- */
+  /* --- 7. QUESTION BUILDER & TOKEN SAVE/UPDATE --- */
   function buildGuestQuestionInputs(existingQuestions = null) {
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
     const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
@@ -1054,7 +1076,7 @@
       .catch(err => alert("Error saving assessment: " + err.message));
   }
 
-  /* --- 7. EXAM EXECUTION & RESULTS --- */
+  /* --- 8. EXAM EXECUTION & RESULTS --- */
   function validateAndStartExam() {
     let name = document.getElementById('stud-name').value.trim();
     let dept = document.getElementById('stud-dept').value.trim();
