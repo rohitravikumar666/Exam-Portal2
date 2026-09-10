@@ -144,6 +144,27 @@
       margin-bottom: 16px;
     }
 
+    .global-actions-bar {
+      background: #fce8e6;
+      border: 1px solid #f5c2c7;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .global-actions-bar h3 {
+      color: var(--danger);
+      margin-bottom: 12px;
+    }
+
+    .global-btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
     /* FORM STYLING */
     .form-group { 
       margin-bottom: 18px; 
@@ -389,23 +410,45 @@
   <!-- ADMIN CONTROL PANEL -->
   <div id="admin-dashboard-view" class="view">
     <h2>Admin Control Panel</h2>
+
+    <!-- GLOBAL BULK CONTROLS -->
+    <div class="global-actions-bar">
+      <h3>Bulk Master Controls</h3>
+      <div class="global-btn-group">
+        <button class="btn btn-warning" onclick="adminDisableAllTokens()">🔒 Disable All Tokens</button>
+        <button class="btn btn-success" onclick="adminReactivateAllTokens()">🔓 Reactivate All Tokens</button>
+        <button class="btn btn-danger" onclick="adminDeleteAllTokens()">🗑️ Delete All Tokens</button>
+      </div>
+    </div>
     
     <div class="dashboard-grid">
       <div class="dashboard-card">
         <h3>1) Create New Token</h3>
-        <p>Build and configure a new password-protected assessment token.</p>
-        <button class="btn btn-primary" style="width: 100%;" onclick="adminCreateNewToken()">+ Create New Token</button>
+        <p>Build and configure a new assessment token.</p>
+        <button class="btn btn-primary" style="width: 100%;" onclick="adminCreateNewToken()">+ Create Token</button>
       </div>
 
       <div class="dashboard-card">
         <h3>2) Modify Token Data</h3>
-        <p>Search, fetch, and modify existing token data and configuration.</p>
-        <button class="btn btn-primary" style="width: 100%;" onclick="adminModifyTokenData()">Modify Token Data</button>
+        <p>Fetch and edit questions or token configuration.</p>
+        <button class="btn btn-primary" style="width: 100%;" onclick="adminModifyTokenData()">Modify Token</button>
       </div>
 
       <div class="dashboard-card">
-        <h3>3) Delete Token</h3>
-        <p>Remove invalid or expired assessment tokens from the database.</p>
+        <h3>3) Disable Single Token</h3>
+        <p>Pause student logins for a specific token.</p>
+        <button class="btn btn-warning" style="width: 100%;" onclick="adminDisableSingleToken()">Disable Token</button>
+      </div>
+
+      <div class="dashboard-card">
+        <h3>4) Reactivate Single Token</h3>
+        <p>Re-enable access for a disabled token.</p>
+        <button class="btn btn-success" style="width: 100%;" onclick="adminReactivateSingleToken()">Reactivate Token</button>
+      </div>
+
+      <div class="dashboard-card">
+        <h3>5) Delete Single Token</h3>
+        <p>Permanently erase a specific token from database.</p>
         <button class="btn btn-danger" style="width: 100%;" onclick="adminDeleteToken()">Delete Token</button>
       </div>
     </div>
@@ -415,7 +458,7 @@
     </div>
   </div>
 
-  <!-- FACULTY CONTROL PANEL (4 OPTIONS) -->
+  <!-- FACULTY CONTROL PANEL -->
   <div id="faculty-dashboard-view" class="view">
     <h2>Faculty Control Panel</h2>
     
@@ -653,6 +696,41 @@
     }
   }
 
+  // Single Token Disable (Admin)
+  function adminDisableSingleToken() {
+    let token = prompt("Enter Single Token Number to Disable:");
+    if (!token) return;
+    token = token.trim().toUpperCase();
+
+    db.ref('assessments/' + token).once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        alert(`Token ${token} does not exist.`);
+        return;
+      }
+      db.ref('assessments/' + token + '/disabled').set(true).then(() => {
+        alert(`Token ${token} has been DISABLED.`);
+      });
+    }).catch(err => alert("Error: " + err.message));
+  }
+
+  // Single Token Reactivate (Admin)
+  function adminReactivateSingleToken() {
+    let token = prompt("Enter Single Token Number to Reactivate:");
+    if (!token) return;
+    token = token.trim().toUpperCase();
+
+    db.ref('assessments/' + token).once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        alert(`Token ${token} does not exist.`);
+        return;
+      }
+      db.ref('assessments/' + token + '/disabled').set(false).then(() => {
+        alert(`Token ${token} has been REACTIVATED.`);
+      });
+    }).catch(err => alert("Error: " + err.message));
+  }
+
+  // Single Token Delete
   function adminDeleteToken() {
     let token = prompt("Enter the Token Number to Delete:");
     if (!token) return;
@@ -662,6 +740,63 @@
       db.ref('assessments/' + token).remove().then(() => {
         alert(`Token ${token} deleted successfully.`);
       }).catch(err => alert("Error deleting token: " + err.message));
+    }
+  }
+
+  // Disable ALL Tokens
+  function adminDisableAllTokens() {
+    if (!confirm("Are you sure you want to DISABLE ALL assessment tokens across the database?")) return;
+
+    db.ref('assessments').once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        alert("No tokens found in database.");
+        return;
+      }
+
+      let updates = {};
+      snapshot.forEach(child => {
+        updates[child.key + '/disabled'] = true;
+      });
+
+      db.ref('assessments').update(updates).then(() => {
+        alert("ALL assessment tokens have been DISABLED successfully.");
+      });
+    }).catch(err => alert("Error disabling tokens: " + err.message));
+  }
+
+  // Reactivate ALL Tokens
+  function adminReactivateAllTokens() {
+    if (!confirm("Are you sure you want to REACTIVATE ALL assessment tokens across the database?")) return;
+
+    db.ref('assessments').once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        alert("No tokens found in database.");
+        return;
+      }
+
+      let updates = {};
+      snapshot.forEach(child => {
+        updates[child.key + '/disabled'] = false;
+      });
+
+      db.ref('assessments').update(updates).then(() => {
+        alert("ALL assessment tokens have been REACTIVATED successfully.");
+      });
+    }).catch(err => alert("Error reactivating tokens: " + err.message));
+  }
+
+  // Delete ALL Tokens
+  function adminDeleteAllTokens() {
+    let confirm1 = confirm("⚠️ WARNING: Are you sure you want to PERMANENTLY DELETE ALL assessment tokens from the database?");
+    if (!confirm1) return;
+
+    let confirm2 = prompt("Type DELETE ALL in capital letters to confirm total deletion:");
+    if (confirm2 === "DELETE ALL") {
+      db.ref('assessments').remove().then(() => {
+        alert("ALL assessment tokens have been permanently deleted.");
+      }).catch(err => alert("Error purging tokens: " + err.message));
+    } else {
+      alert("Action cancelled. Secret phrase did not match.");
     }
   }
 
@@ -676,7 +811,6 @@
     }
   }
 
-  // Option 1: Add Question
   function facultyAddQuestions() {
     resetGuestForm();
     document.getElementById('admin-token-search-box').style.display = 'none';
@@ -684,7 +818,6 @@
     showView('guest-view');
   }
 
-  // Option 2: Modify Question
   function facultyModifyQuestions() {
     resetGuestForm();
     document.getElementById('admin-token-search-box').style.display = 'block';
@@ -698,7 +831,6 @@
     }
   }
 
-  // Option 3: Temporarily Disable Token
   function facultyDisableToken() {
     let token = prompt("Enter Token Number to Temporarily Disable:");
     if (!token) return;
@@ -715,7 +847,6 @@
     }).catch(err => alert("Error disabling token: " + err.message));
   }
 
-  // Option 4: Reactivate Token
   function facultyReactivateToken() {
     let token = prompt("Enter Token Number to Reactivate:");
     if (!token) return;
@@ -795,9 +926,8 @@
       if (snapshot.exists()) {
         let data = snapshot.val();
 
-        // Check if token is temporarily disabled
         if (data.disabled === true) {
-          alert(`Token ${token} is temporarily disabled by the faculty. Please check back later.`);
+          alert(`Token ${token} is temporarily disabled by the faculty/admin. Please check back later.`);
           return;
         }
 
