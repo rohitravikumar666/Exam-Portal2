@@ -24,6 +24,7 @@
       --danger: #d93025;
       --success: #188038;
       --accent: #e8f0fe;
+      --warning: #f2994a;
     }
 
     body {
@@ -100,6 +101,9 @@
     .btn-success { background-color: var(--success); }
     .btn-success:hover { background-color: #13652b; }
     
+    .btn-warning { background-color: var(--warning); }
+    .btn-warning:hover { background-color: #d88033; }
+
     .btn-secondary { background-color: #5f6368; }
     .btn-secondary:hover { background-color: #474a4d; }
 
@@ -109,7 +113,7 @@
     /* DASHBOARD CARD & GRID STYLING */
     .dashboard-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
       margin: 20px 0;
     }
@@ -129,13 +133,13 @@
     }
 
     .dashboard-card h3 {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       color: var(--text);
       margin-bottom: 10px;
     }
 
     .dashboard-card p {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--text-muted);
       margin-bottom: 16px;
     }
@@ -291,7 +295,6 @@
       margin-bottom: 20px;
     }
 
-    /* UNCROWDED TOKEN LOAD CONTAINER */
     .token-load-box {
       background: var(--accent);
       border: 1px dashed var(--primary);
@@ -331,10 +334,10 @@
     <h2>Select Access Mode</h2>
     
     <div class="menu-rows">
-      <!-- ROW 1: Admin Login & Guest/Faculty Login -->
+      <!-- ROW 1: Admin Login & Faculty Login -->
       <div class="button-row">
         <button class="btn-danger" onclick="showAdminLoginModal()">Admin Login</button>
-        <button class="btn-secondary" onclick="showGuestLoginModal()">Faculty / Guest Login</button>
+        <button class="btn-secondary" onclick="showFacultyLoginModal()">Faculty Login</button>
       </div>
 
       <!-- ROW 2: Student Login -->
@@ -412,11 +415,46 @@
     </div>
   </div>
 
-  <!-- FACULTY / GUEST ASSESSMENT CREATOR & EDITOR -->
-  <div id="guest-view" class="view">
-    <h2 id="assessment-editor-title">Faculty / Assessment Management</h2>
+  <!-- FACULTY CONTROL PANEL (4 OPTIONS) -->
+  <div id="faculty-dashboard-view" class="view">
+    <h2>Faculty Control Panel</h2>
     
-    <!-- SEARCH & MODIFY TOKEN CONTAINER (ADMIN ONLY) -->
+    <div class="dashboard-grid">
+      <div class="dashboard-card">
+        <h3>1) Add Question</h3>
+        <p>Create a new assessment token and build questions.</p>
+        <button class="btn btn-primary" style="width: 100%;" onclick="facultyAddQuestions()">Add Question / Token</button>
+      </div>
+
+      <div class="dashboard-card">
+        <h3>2) Modify Question</h3>
+        <p>Fetch and edit questions or assessment details for a token.</p>
+        <button class="btn btn-primary" style="width: 100%;" onclick="facultyModifyQuestions()">Modify Question</button>
+      </div>
+
+      <div class="dashboard-card">
+        <h3>3) Disable Token</h3>
+        <p>Temporarily pause student access for an active assessment token.</p>
+        <button class="btn btn-warning" style="width: 100%;" onclick="facultyDisableToken()">Temporarily Disable</button>
+      </div>
+
+      <div class="dashboard-card">
+        <h3>4) Reactivate Token</h3>
+        <p>Re-enable student access for a temporarily disabled token.</p>
+        <button class="btn btn-success" style="width: 100%;" onclick="facultyReactivateToken()">Reactivate Token</button>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 25px;">
+      <button class="btn btn-secondary" style="padding: 10px 24px;" onclick="showView('initial-view')">Exit Faculty Panel</button>
+    </div>
+  </div>
+
+  <!-- FACULTY / ASSESSMENT CREATOR & EDITOR -->
+  <div id="guest-view" class="view">
+    <h2 id="assessment-editor-title">Faculty Assessment Management</h2>
+    
+    <!-- SEARCH & MODIFY TOKEN CONTAINER -->
     <div class="token-load-box" id="admin-token-search-box" style="display:none;">
       <label for="existing-token-input" style="color: var(--primary-dark); font-weight: 700;">Search & Load Existing Token Data:</label>
       <div class="token-input-flex">
@@ -452,7 +490,6 @@
         </div>
       </div>
 
-      <!-- MARKS PER QUESTION & TIME PER QUESTION FIELDS -->
       <div class="form-row">
         <div class="form-group">
           <label>Time per Question (Seconds):</label>
@@ -555,7 +592,7 @@
 
   // ACCESS PASSWORDS
   const ADMIN_PASSWORD = "RR@CET_Civil@2026";
-  const GUEST_PASSWORD = "CET_Civil@2026";
+  const FACULTY_PASSWORD = "CET_Civil@2026";
 
   let activeAssessment = null;
   let activeToken = "";
@@ -566,7 +603,7 @@
   let currentStudent = {};
 
   // Track state
-  let isAdminUser = false;
+  let currentMode = "GUEST"; // "ADMIN" or "FACULTY"
   let activeEditingToken = null;
 
   function showView(viewId) {
@@ -575,8 +612,10 @@
   }
 
   function exitEditorView() {
-    if (isAdminUser) {
+    if (currentMode === "ADMIN") {
       showView('admin-dashboard-view');
+    } else if (currentMode === "FACULTY") {
+      showView('faculty-dashboard-view');
     } else {
       showView('initial-view');
     }
@@ -586,7 +625,7 @@
   function showAdminLoginModal() {
     let pass = prompt("Enter Master Admin Password:");
     if (pass === ADMIN_PASSWORD) {
-      isAdminUser = true;
+      currentMode = "ADMIN";
       showView('admin-dashboard-view');
     } else if (pass !== null) {
       alert("Incorrect Password!");
@@ -626,18 +665,71 @@
     }
   }
 
-  /* --- 3. FACULTY / GUEST LOGIN --- */
-  function showGuestLoginModal() {
-    let pass = prompt("Enter Faculty / Guest Access Password:");
-    if (pass === GUEST_PASSWORD) {
-      isAdminUser = false;
-      resetGuestForm();
-      document.getElementById('admin-token-search-box').style.display = 'none';
-      document.getElementById('assessment-editor-title').innerText = "Faculty / Guest Assessment Management";
-      showView('guest-view');
+  /* --- 3. FACULTY LOGIN & DASHBOARD ACTIONS --- */
+  function showFacultyLoginModal() {
+    let pass = prompt("Enter Faculty Access Password:");
+    if (pass === FACULTY_PASSWORD) {
+      currentMode = "FACULTY";
+      showView('faculty-dashboard-view');
     } else if (pass !== null) {
       alert("Incorrect Access Password!");
     }
+  }
+
+  // Option 1: Add Question
+  function facultyAddQuestions() {
+    resetGuestForm();
+    document.getElementById('admin-token-search-box').style.display = 'none';
+    document.getElementById('assessment-editor-title').innerText = "Faculty - Add New Assessment Token";
+    showView('guest-view');
+  }
+
+  // Option 2: Modify Question
+  function facultyModifyQuestions() {
+    resetGuestForm();
+    document.getElementById('admin-token-search-box').style.display = 'block';
+    document.getElementById('assessment-editor-title').innerText = "Faculty - Modify Questions";
+    showView('guest-view');
+
+    let token = prompt("Enter Token Number to Modify Questions:");
+    if (token) {
+      document.getElementById('existing-token-input').value = token.trim().toUpperCase();
+      loadExistingTokenData();
+    }
+  }
+
+  // Option 3: Temporarily Disable Token
+  function facultyDisableToken() {
+    let token = prompt("Enter Token Number to Temporarily Disable:");
+    if (!token) return;
+    token = token.trim().toUpperCase();
+
+    db.ref('assessments/' + token).once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        alert(`Token ${token} does not exist.`);
+        return;
+      }
+      db.ref('assessments/' + token + '/disabled').set(true).then(() => {
+        alert(`Token ${token} has been TEMPORARILY DISABLED. Students will not be able to start exams using this token.`);
+      });
+    }).catch(err => alert("Error disabling token: " + err.message));
+  }
+
+  // Option 4: Reactivate Token
+  function facultyReactivateToken() {
+    let token = prompt("Enter Token Number to Reactivate:");
+    if (!token) return;
+    token = token.trim().toUpperCase();
+
+    db.ref('assessments/' + token).once('value').then(snapshot => {
+      if (!snapshot.exists()) {
+        alert(`Token ${token} does not exist.`);
+        return;
+      }
+      db.ref('assessments/' + token + '/disabled').set(false).then(() => {
+        alert(`Token ${token} has been REACTIVATED successfully! Students can now login.`);
+      });
+    }).catch(err => alert("Error reactivating token: " + err.message));
   }
 
   /* --- 4. FETCH EXISTING TOKEN OR RESET FORM --- */
@@ -670,7 +762,7 @@
       document.getElementById('save-token-btn').innerText = "Update Existing Token";
 
       buildGuestQuestionInputs(data.questions);
-      alert(`Token ${activeEditingToken} loaded successfully! You can now modify its details.`);
+      alert(`Token ${activeEditingToken} loaded successfully! You can now modify questions or details.`);
     }).catch(err => alert("Error fetching token: " + err.message));
   }
 
@@ -701,7 +793,15 @@
     token = token.trim().toUpperCase();
     db.ref('assessments/' + token).once('value').then((snapshot) => {
       if (snapshot.exists()) {
-        activeAssessment = snapshot.val();
+        let data = snapshot.val();
+
+        // Check if token is temporarily disabled
+        if (data.disabled === true) {
+          alert(`Token ${token} is temporarily disabled by the faculty. Please check back later.`);
+          return;
+        }
+
+        activeAssessment = data;
         activeToken = token;
         document.getElementById('active-exam-label').innerText = activeAssessment.title;
         document.getElementById('active-faculty-label').innerText = activeAssessment.facultyName || "Faculty Evaluator";
@@ -764,7 +864,7 @@
 
   function generateGuestAssessmentToken() {
     const facultyName = document.getElementById('guest-faculty-name').value.trim() || "Faculty Evaluator";
-    const title = document.getElementById('guest-exam-title').value.trim() || "Guest Assessment";
+    const title = document.getElementById('guest-exam-title').value.trim() || "Faculty Assessment";
     const secCount = parseInt(document.getElementById('guest-sec-count').value) || 1;
     const qnsPerSec = parseInt(document.getElementById('guest-qns-per-sec').value) || 1;
     const timePerQn = parseInt(document.getElementById('guest-time-per-qn').value) || 15;
@@ -806,7 +906,8 @@
       timePerQn: timePerQn,
       marksPerQn: marksPerQn,
       driveUrl: driveUrl,
-      questions: compiledQuestions
+      questions: compiledQuestions,
+      disabled: false
     };
 
     db.ref('assessments/' + token).set(payload)
