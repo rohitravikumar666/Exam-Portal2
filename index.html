@@ -7,6 +7,8 @@
   
   <!-- Screenshot Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- jsPDF Library for PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -144,7 +146,7 @@
       margin-bottom: 16px;
     }
 
-    /* TOKEN OVERVIEW TABLE STYLING */
+    /* TABLE STYLING */
     .overview-container {
       background: #fafafa;
       border: 1px solid var(--border);
@@ -153,21 +155,22 @@
       margin-bottom: 24px;
     }
 
-    .overview-table {
+    .overview-table, .leaderboard-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 12px;
       background: #ffffff;
     }
 
-    .overview-table th, .overview-table td {
+    .overview-table th, .overview-table td,
+    .leaderboard-table th, .leaderboard-table td {
       border: 1px solid var(--border);
-      padding: 10px 14px;
+      padding: 10px 12px;
       text-align: left;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
 
-    .overview-table th {
+    .overview-table th, .leaderboard-table th {
       background-color: var(--accent);
       color: var(--primary-dark);
       font-weight: 700;
@@ -315,7 +318,7 @@
 
     .result-table th { background-color: #f1f3f4; }
 
-    #screenshot-area {
+    #screenshot-area, #leaderboard-export-area {
       padding: 24px;
       background: #ffffff;
       border: 1px solid var(--border);
@@ -366,6 +369,22 @@
       white-space: nowrap;
       font-size: 14px;
     }
+
+    .rank-badge {
+      font-weight: bold;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: var(--primary-dark);
+    }
+
+    .rank-1 { background: #ffd700; color: #000; }
+    .rank-2 { background: #c0c0c0; color: #000; }
+    .rank-3 { background: #cd7f32; color: #fff; }
   </style>
 </head>
 <body>
@@ -391,6 +410,48 @@
       <div class="button-row">
         <button class="btn-primary" onclick="showStudentTokenModal()">Student Login</button>
       </div>
+
+      <!-- ROW 3: Leaderboard Access -->
+      <div class="button-row">
+        <button class="btn-warning" onclick="promptAndShowLeaderboard()">🏆 View Leaderboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD VIEW -->
+  <div id="leaderboard-view" class="view">
+    <div id="leaderboard-export-area">
+      <h2 id="lb-exam-title">Assessment Leaderboard</h2>
+      <div class="student-details-card" style="margin-bottom: 15px;">
+        <p><strong>Token:</strong> <span id="lb-token-display" style="color:var(--primary); font-weight:bold;">-</span></p>
+        <p><strong>Faculty Evaluator:</strong> <span id="lb-faculty-display">-</span></p>
+        <p><strong>Total Participants:</strong> <span id="lb-total-students">0</span></p>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="leaderboard-table">
+          <thead>
+            <tr id="lb-table-header">
+              <th>Rank</th>
+              <th>Roll No</th>
+              <th>Student Name</th>
+              <th>Attempt Time</th>
+              <th>Total Score</th>
+            </tr>
+          </thead>
+          <tbody id="lb-table-body">
+            <tr>
+              <td colspan="5" style="text-align:center; color: var(--text-muted);">Loading leaderboard...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <button class="btn btn-primary" style="padding: 12px 20px;" onclick="downloadLeaderboardPDF()">📄 Download PDF</button>
+      <button class="btn btn-success" style="padding: 12px 20px;" onclick="downloadLeaderboardImage()">🖼️ Download Image</button>
+      <button class="btn btn-secondary" style="padding: 12px 20px;" onclick="showView('initial-view')">Back to Menu</button>
     </div>
   </div>
 
@@ -489,7 +550,6 @@
         <button class="btn btn-danger" style="width: 100%;" onclick="adminDeleteToken()">Delete Token</button>
       </div>
 
-      <!-- NEW BULK MANAGEMENT CONTROLS -->
       <div class="dashboard-card">
         <h3>6) Activate All Tokens</h3>
         <p>Re-enable access for all assessment tokens at once.</p>
@@ -675,7 +735,7 @@
 </div>
 
 <script>
-  // UPDATED FIREBASE CONFIGURATION (examportal-7c259)
+  // FIREBASE CONFIGURATION
   const firebaseConfig = {
     apiKey: "AIzaSyCTuB-3Vhy3R1-VkjjgoKxZ52r3556cUak",
     authDomain: "examportal-7c259.firebaseapp.com",
@@ -701,9 +761,9 @@
   let timeLeft = 15;
   let currentStudent = {};
 
-  // Track state
   let currentMode = "GUEST"; // "ADMIN" or "FACULTY"
   let activeEditingToken = null;
+  let currentLbToken = "";
 
   function showView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -791,7 +851,6 @@
     }
   }
 
-  // Single Token Disable (Admin)
   function adminDisableSingleToken() {
     let token = prompt("Enter Single Token Number to Disable:");
     if (!token) return;
@@ -809,7 +868,6 @@
     }).catch(err => alert("Error: " + err.message));
   }
 
-  // Single Token Reactivate (Admin)
   function adminReactivateSingleToken() {
     let token = prompt("Enter Single Token Number to Reactivate:");
     if (!token) return;
@@ -827,7 +885,6 @@
     }).catch(err => alert("Error: " + err.message));
   }
 
-  // Single Token Delete
   function adminDeleteToken() {
     let token = prompt("Enter the Token Number to Delete:");
     if (!token) return;
@@ -841,7 +898,6 @@
     }
   }
 
-  /* --- 3b. BULK ADMIN ACTIONS --- */
   function adminActivateAllTokens() {
     if (!confirm("Are you sure you want to ACTIVATE all tokens in the database?")) return;
 
@@ -1278,6 +1334,31 @@
       tr.innerHTML = `<td>Section ${sIdx + 1}</td><td>${score}</td><td>${maxSecMarks}</td>`;
       tbody.appendChild(tr);
     });
+
+    // ARCHIVE RESULT TO FIREBASE FOR LEADERBOARD
+    saveResultToFirebase(sectionScores, totalScore, maxTotal);
+  }
+
+  function saveResultToFirebase(sectionScores, totalScore, maxTotal) {
+    const timestamp = new Date().toLocaleString();
+    const epochTime = Date.now();
+    
+    const resultRecord = {
+      name: currentStudent.name,
+      rollNum: currentStudent.rollNum,
+      classNum: currentStudent.classNum,
+      dept: currentStudent.dept,
+      sem: currentStudent.sem,
+      sectionScores: sectionScores,
+      totalScore: totalScore,
+      maxTotal: maxTotal,
+      attemptTime: timestamp,
+      timestampEpoch: epochTime
+    };
+
+    db.ref(`results/${activeToken}`).push(resultRecord)
+      .then(() => console.log("Result saved to leaderboard archive."))
+      .catch(err => console.error("Error archiving result:", err));
   }
 
   function shareWithFaculty() {
@@ -1293,6 +1374,138 @@
       if (activeAssessment.driveUrl) {
         window.open(activeAssessment.driveUrl, '_blank');
       }
+    });
+  }
+
+  /* --- 9. LEADERBOARD SYSTEM --- */
+  function promptAndShowLeaderboard() {
+    let token = prompt("Enter Assessment Token to View Leaderboard:");
+    if (!token) return;
+    
+    token = token.trim().toUpperCase();
+    currentLbToken = token;
+    showLeaderboard(token);
+  }
+
+  function showLeaderboard(token) {
+    showView('leaderboard-view');
+    document.getElementById('lb-token-display').innerText = token;
+    document.getElementById('lb-exam-title').innerText = "Assessment Leaderboard";
+    document.getElementById('lb-faculty-display').innerText = "-";
+    document.getElementById('lb-total-students').innerText = "0";
+
+    const tbody = document.getElementById('lb-table-body');
+    const headerRow = document.getElementById('lb-table-header');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--text-muted);">Fetching leaderboard data...</td></tr>';
+
+    // Fetch assessment metadata
+    db.ref(`assessments/${token}`).once('value').then(assessSnap => {
+      if (!assessSnap.exists()) {
+        alert(`Assessment Token ${token} does not exist in the database.`);
+        showView('initial-view');
+        return;
+      }
+
+      let assessData = assessSnap.val();
+      document.getElementById('lb-exam-title').innerText = `${assessData.title || "Assessment"} - Leaderboard`;
+      document.getElementById('lb-faculty-display').innerText = assessData.facultyName || "Faculty Evaluator";
+
+      let secCount = assessData.sectionsCount || 1;
+
+      // Construct Dynamic Table Headers based on section count
+      let headerHTML = `<th>Rank</th><th>Roll No</th><th>Student Name</th>`;
+      for (let s = 1; s <= secCount; s++) {
+        headerHTML += `<th>Sec ${s} Score</th>`;
+      }
+      headerHTML += `<th>Total Score</th><th>Attempt Time</th>`;
+      headerRow.innerHTML = headerHTML;
+
+      // Fetch student results for this token
+      db.ref(`results/${token}`).once('value').then(resultsSnap => {
+        if (!resultsSnap.exists()) {
+          tbody.innerHTML = `<tr><td colspan="${5 + secCount}" style="text-align:center; color: var(--text-muted);">No student attempts recorded for this token yet.</td></tr>`;
+          return;
+        }
+
+        let resultsList = [];
+        resultsSnap.forEach(child => {
+          resultsList.push(child.val());
+        });
+
+        // Sort: Highest total score first, then earliest attempt time
+        resultsList.sort((a, b) => {
+          if (b.totalScore !== a.totalScore) {
+            return b.totalScore - a.totalScore;
+          }
+          return (a.timestampEpoch || 0) - (b.timestampEpoch || 0);
+        });
+
+        document.getElementById('lb-total-students').innerText = resultsList.length;
+        tbody.innerHTML = '';
+
+        resultsList.forEach((res, index) => {
+          let rank = index + 1;
+          let rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
+          
+          let tr = document.createElement('tr');
+          let rowHTML = `
+            <td><span class="rank-badge ${rankClass}">${rank}</span></td>
+            <td><strong>${res.rollNum || '-'}</strong></td>
+            <td>${res.name || 'Anonymous'}</td>
+          `;
+
+          // Fill section scores
+          for (let s = 0; s < secCount; s++) {
+            let score = (res.sectionScores && res.sectionScores[s] !== undefined) ? res.sectionScores[s] : 0;
+            rowHTML += `<td>${score}</td>`;
+          }
+
+          rowHTML += `
+            <td><strong>${res.totalScore} / ${res.maxTotal || '-'}</strong></td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${res.attemptTime || '-'}</td>
+          `;
+
+          tr.innerHTML = rowHTML;
+          tbody.appendChild(tr);
+        });
+      });
+    }).catch(err => alert("Error loading leaderboard: " + err.message));
+  }
+
+  function downloadLeaderboardImage() {
+    const area = document.getElementById('leaderboard-export-area');
+    html2canvas(area, { scale: 2 }).then(canvas => {
+      let link = document.createElement('a');
+      link.download = `Leaderboard_${currentLbToken}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  }
+
+  function downloadLeaderboardPDF() {
+    const area = document.getElementById('leaderboard-export-area');
+    html2canvas(area, { scale: 2 }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 190; // A4 size width minus margins
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 10;
+
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Leaderboard_${currentLbToken}.pdf`);
     });
   }
 </script>
