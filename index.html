@@ -9,6 +9,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <!-- jsPDF Library for PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS (xlsx) Library for Excel Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -451,7 +453,7 @@
       </div>
 
       <div class="table-wrapper">
-        <table class="leaderboard-table">
+        <table class="leaderboard-table" id="main-leaderboard-table">
           <thead>
             <tr id="lb-table-header">
               <th>Rank</th>
@@ -472,7 +474,8 @@
 
     <div style="text-align: center; margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
       <button class="btn btn-primary" style="padding: 12px 20px;" onclick="downloadLeaderboardPDF()">📄 Download PDF</button>
-      <button class="btn btn-success" style="padding: 12px 20px;" onclick="downloadLeaderboardImage()">🖼️ Download Image</button>
+      <button class="btn btn-success" style="padding: 12px 20px;" onclick="downloadLeaderboardExcel()">📊 Download Excel</button>
+      <button class="btn btn-warning" style="padding: 12px 20px;" onclick="downloadLeaderboardImage()">🖼️ Download Image</button>
       <button class="btn btn-secondary" style="padding: 12px 20px;" onclick="showView('initial-view')">Back to Menu</button>
     </div>
   </div>
@@ -1512,33 +1515,91 @@
 
   function downloadLeaderboardPDF() {
     const area = document.getElementById('leaderboard-export-area');
-    const originalWidth = area.style.width;
-    area.style.width = area.scrollWidth + 'px';
+    const tableWrapper = area.querySelector('.table-wrapper');
 
-    html2canvas(area, { scale: 2 }).then(canvas => {
-      area.style.width = originalWidth;
-      const imgData = canvas.toDataURL('image/png');
+    // Store temporary styles to un-clip tables for full canvas rendering
+    const originalWrapperStyle = tableWrapper ? tableWrapper.style.cssText : '';
+    const originalAreaWidth = area.style.width;
+
+    if (tableWrapper) {
+      tableWrapper.style.overflow = 'visible';
+    }
+    area.style.width = 'auto';
+
+    html2canvas(area, { scale: 2, useCORS: true }).then(canvas => {
+      // Restore styles
+      if (tableWrapper) tableWrapper.style.cssText = originalWrapperStyle;
+      area.style.width = originalAreaWidth;
+
       const { jsPDF } = window.jspdf;
-      
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 190;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 10;
 
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const printWidth = pageWidth - (margin * 2);
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = printWidth / imgWidth;
+
+      const renderHeight = imgHeight * ratio;
+      let heightLeft = renderHeight;
+      let positionY = 0;
+
+      // Slice multi-page PDF dynamically without clipping rows
+      while (heightLeft > 0) {
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = imgWidth;
+        pageCanvas.height = Math.min(imgHeight - positionY, (pageHeight - margin * 2) / ratio);
+
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(
+          canvas,
+          0, positionY, imgWidth, pageCanvas.height,
+          0, 0, imgWidth, pageCanvas.height
+        );
+
+        const pageImgData = pageCanvas.toDataURL('image/png');
+        if (positionY > 0) pdf.addPage();
+
+        pdf.addImage(pageImgData, 'PNG', margin, margin, printWidth, pageCanvas.height * ratio);
+
+        positionY += pageCanvas.height;
+        heightLeft -= (pageHeight - margin * 2) / ratio;
       }
 
       pdf.save(`Leaderboard_${currentLbToken}.pdf`);
+    }).catch(err => {
+      if (tableWrapper) tableWrapper.style.cssText = originalWrapperStyle;
+      area.style.width = originalAreaWidth;
+      alert("Failed to generate PDF: " + err.message);
     });
+  }
+
+  function downloadLeaderboardExcel() {
+    const table = document.getElementById('main-leaderboard-table');
+    if (!table) {
+      alert("No leaderboard data found to export.");
+      return;
+    }
+
+    // Convert DOM Table directly into an XLSX sheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(table);
+
+    // Auto-fit column widths
+    const colWidths = [];
+    for (let col in ws) {
+      if (col[0] === '!') continue;
+      let colIdx = XLSX.utils.decode_cell(col).c;
+      let valLen = ws[col].v ? ws[col].v.toString().length : 10;
+      colWidths[colIdx] = Math.max(colWidths[colIdx] || 10, valLen + 3);
+    }
+    ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
+    XLSX.utils.book_append_sheet(wb, ws, "Leaderboard");
+    XLSX.writeFile(wb, `Leaderboard_${currentLbToken}.xlsx`);
   }
 </script>
 
