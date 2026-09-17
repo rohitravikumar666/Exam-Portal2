@@ -47,6 +47,7 @@
       border-radius: 12px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.08);
       border: 1px solid var(--border);
+      box-sizing: border-box;
     }
 
     h1, h2, h3 { 
@@ -146,7 +147,14 @@
       margin-bottom: 16px;
     }
 
-    /* TABLE STYLING */
+    /* TABLE CONTAINER WRAPPERS FOR HORIZONTAL SCROLLING */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 12px;
+    }
+
     .overview-container {
       background: #fafafa;
       border: 1px solid var(--border);
@@ -158,7 +166,6 @@
     .overview-table, .leaderboard-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
       background: #ffffff;
     }
 
@@ -168,6 +175,7 @@
       padding: 10px 12px;
       text-align: left;
       font-size: 0.88rem;
+      white-space: nowrap;
     }
 
     .overview-table th, .leaderboard-table th {
@@ -232,6 +240,13 @@
       outline: none;
       border-color: var(--primary);
       background-color: #fff;
+    }
+
+    .field-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      margin-bottom: 0;
     }
 
     .status-badge {
@@ -385,6 +400,13 @@
     .rank-1 { background: #ffd700; color: #000; }
     .rank-2 { background: #c0c0c0; color: #000; }
     .rank-3 { background: #cd7f32; color: #fff; }
+
+    @media (max-width: 600px) {
+      .form-row {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -428,7 +450,7 @@
         <p><strong>Total Participants:</strong> <span id="lb-total-students">0</span></p>
       </div>
 
-      <div style="overflow-x: auto;">
+      <div class="table-wrapper">
         <table class="leaderboard-table">
           <thead>
             <tr id="lb-table-header">
@@ -501,21 +523,23 @@
     <!-- DATABASE ASSESSMENT OVERVIEW TABLE -->
     <div class="overview-container">
       <h3 style="margin-bottom: 8px;">Database Tokens Summary</h3>
-      <table class="overview-table">
-        <thead>
-          <tr>
-            <th>Token</th>
-            <th>Faculty Name</th>
-            <th>Assessment Title</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="admin-tokens-table-body">
-          <tr>
-            <td colspan="4" style="text-align:center; color: var(--text-muted);">Fetching token data...</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-wrapper">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Faculty Name</th>
+              <th>Assessment Title</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="admin-tokens-table-body">
+            <tr>
+              <td colspan="4" style="text-align:center; color: var(--text-muted);">Fetching token data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     
     <!-- DASHBOARD ACTIONS GRID -->
@@ -661,8 +685,9 @@
       </div>
 
       <div class="form-group">
-        <label>Google Drive Destination Link (For Screenshots):</label>
-        <input type="text" id="guest-drive-url" placeholder="https://drive.google.com/...">
+        <label>Google Drive / WhatsApp Link (Optional):</label>
+        <input type="text" id="guest-drive-url" placeholder="https://drive.google.com/... or https://wa.me/...">
+        <p class="field-note"><strong>Note:</strong> This field is optional. Enter a link only if student scorecards should be submitted or sent to this destination.</p>
       </div>
     </div>
 
@@ -714,16 +739,18 @@
 
       <h3 id="total-score-display" style="font-size: 1.4rem; color: var(--primary-dark);">Total Score: 0</h3>
       
-      <table class="result-table">
-        <thead>
-          <tr>
-            <th>Section Name</th>
-            <th>Score Obtained</th>
-            <th>Maximum Marks</th>
-          </tr>
-        </thead>
-        <tbody id="result-table-body"></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table class="result-table">
+          <thead>
+            <tr>
+              <th>Section Name</th>
+              <th>Score Obtained</th>
+              <th>Maximum Marks</th>
+            </tr>
+          </thead>
+          <tbody id="result-table-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <div style="text-align: center; margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
@@ -1153,11 +1180,6 @@
     const marksPerQn = parseInt(document.getElementById('guest-marks-per-qn').value) || 1;
     const driveUrl = document.getElementById('guest-drive-url').value.trim();
 
-    if (!driveUrl) {
-      alert("Please enter a Google Drive link for screenshot submissions.");
-      return;
-    }
-
     const cards = document.querySelectorAll('#guest-questions-container > div');
     let compiledQuestions = [];
 
@@ -1370,9 +1392,11 @@
       link.href = canvas.toDataURL();
       link.click();
 
-      alert("Result screenshot downloaded successfully! Opening Google Drive destination...");
       if (activeAssessment.driveUrl) {
+        alert("Result screenshot downloaded successfully! Opening link destination...");
         window.open(activeAssessment.driveUrl, '_blank');
+      } else {
+        alert("Result screenshot downloaded successfully!");
       }
     });
   }
@@ -1474,7 +1498,11 @@
 
   function downloadLeaderboardImage() {
     const area = document.getElementById('leaderboard-export-area');
+    const originalWidth = area.style.width;
+    area.style.width = area.scrollWidth + 'px';
+
     html2canvas(area, { scale: 2 }).then(canvas => {
+      area.style.width = originalWidth;
       let link = document.createElement('a');
       link.download = `Leaderboard_${currentLbToken}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -1484,12 +1512,16 @@
 
   function downloadLeaderboardPDF() {
     const area = document.getElementById('leaderboard-export-area');
+    const originalWidth = area.style.width;
+    area.style.width = area.scrollWidth + 'px';
+
     html2canvas(area, { scale: 2 }).then(canvas => {
+      area.style.width = originalWidth;
       const imgData = canvas.toDataURL('image/png');
       const { jsPDF } = window.jspdf;
       
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 190; // A4 size width minus margins
+      const imgWidth = 190;
       const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
